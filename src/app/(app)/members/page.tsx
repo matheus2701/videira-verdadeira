@@ -10,15 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { DatePicker } from "@/components/ui/date-picker"; // New component
+import { DatePicker } from "@/components/ui/date-picker";
 import { PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const memberSchema = z.object({
   fullName: z.string().min(3, { message: "Nome completo deve ter pelo menos 3 caracteres." }),
   birthDate: z.date({ required_error: "Data de nascimento é obrigatória." }),
   contactPhone: z.string().min(10, { message: "Telefone de contato inválido." }).regex(/^\s*(\(?\d{2}\)?\s?)?(\d{4,5}-?\d{4})\s*$/, { message: "Formato de telefone inválido."}),
-  cellGroupName: z.string().optional(),
+  cellGroupName: z.string().optional(), // Para missionários, pode ser qualquer célula. Para líderes, será a sua.
 });
 
 type MemberFormValues = z.infer<typeof memberSchema>;
@@ -26,6 +27,7 @@ type MemberFormValues = z.infer<typeof memberSchema>;
 export default function MembersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const form = useForm<MemberFormValues>({
     resolver: zodResolver(memberSchema),
@@ -33,24 +35,48 @@ export default function MembersPage() {
       fullName: "",
       birthDate: undefined,
       contactPhone: "",
-      cellGroupName: "",
+      cellGroupName: user?.role === 'lider_de_celula' ? user.cellGroupName : "",
     },
   });
+  
+  // Atualizar defaultValues se o usuário mudar (para o switcher de demo)
+  useState(() => {
+     form.reset({
+      fullName: "",
+      birthDate: undefined,
+      contactPhone: "",
+      cellGroupName: user?.role === 'lider_de_celula' ? user.cellGroupName : "",
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, form.reset])
+
 
   function onSubmit(values: MemberFormValues) {
-    console.log("Dados do Membro:", values);
+    const dataToSubmit = {
+      ...values,
+      // Se for líder, garantir que o nome da célula seja o dele
+      cellGroupName: user?.role === 'lider_de_celula' ? user.cellGroupName : values.cellGroupName,
+    };
+    console.log("Dados do Membro:", dataToSubmit);
     toast({
       title: "Sucesso!",
       description: "Membro adicionado com sucesso.",
     });
     setIsDialogOpen(false);
-    form.reset();
+    form.reset({
+      fullName: "",
+      birthDate: undefined,
+      contactPhone: "",
+      cellGroupName: user?.role === 'lider_de_celula' ? user.cellGroupName : "",
+    });
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="font-headline text-3xl font-semibold">Diretório de Membros</h1>
+        <h1 className="font-headline text-3xl font-semibold">
+          {user?.role === 'lider_de_celula' ? `Membros de ${user.cellGroupName || 'Minha Célula'}` : 'Diretório de Membros'}
+        </h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -62,6 +88,7 @@ export default function MembersPage() {
               <DialogTitle className="font-headline">Adicionar Novo Membro</DialogTitle>
               <DialogDescription className="font-body">
                 Preencha os detalhes abaixo para cadastrar um novo membro.
+                {user?.role === 'lider_de_celula' && ` O membro será adicionado à célula ${user.cellGroupName}.`}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -112,9 +139,15 @@ export default function MembersPage() {
                   name="cellGroupName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome da Célula (Opcional)</FormLabel>
+                      <FormLabel>
+                        {user?.role === 'lider_de_celula' ? 'Célula' : 'Nome da Célula (Opcional)'}
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Discípulos de Cristo" {...field} />
+                        <Input 
+                          placeholder="Ex: Discípulos de Cristo" 
+                          {...field} 
+                          disabled={user?.role === 'lider_de_celula'}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -133,15 +166,25 @@ export default function MembersPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Lista de Membros</CardTitle>
+          <CardTitle className="font-headline">
+            {user?.role === 'lider_de_celula' ? `Membros de ${user.cellGroupName || 'Minha Célula'}` : 'Lista de Todos os Membros'}
+          </CardTitle>
           <CardDescription className="font-body">
-            Mantenha um diretório de indivíduos incluindo nomes, datas de nascimento, informações de contato (WhatsApp) e afiliações a grupos.
+            {user?.role === 'lider_de_celula' 
+              ? `Visualize e gerencie os membros da sua célula: ${user.cellGroupName}.`
+              : "Mantenha um diretório de indivíduos incluindo nomes, datas de nascimento, informações de contato (WhatsApp) e afiliações a grupos."
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for table or list */}
           <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-            Nenhum membro cadastrado ainda. Clique em "Adicionar Membro" para começar.
+            {user?.role === 'lider_de_celula'
+              ? `Lista de membros da célula "${user.cellGroupName || 'N/A'}" seria exibida aqui.`
+              : 'Nenhum membro cadastrado ainda. Clique em "Adicionar Membro" para começar.'
+            }
+            {user?.role === 'lider_de_celula' && (!user.cellGroupName || !user.cellGroupId) && 
+              <p className="text-destructive text-sm mt-2">Líder não associado a uma célula específica.</p>
+            }
           </div>
         </CardContent>
       </Card>

@@ -1,8 +1,40 @@
+
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { ShieldAlert } from "lucide-react";
 // import { DatePickerWithRange } from "@/components/ui/date-picker-range"; // Placeholder for date picker
 
 export default function ReportsPage() {
+  const { user } = useAuth();
+
+  if (user?.role === 'lider_de_celula') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <ShieldAlert className="w-16 h-16 text-destructive mb-4" />
+        <h1 className="font-headline text-3xl font-semibold mb-2">Acesso Negado</h1>
+        <p className="text-muted-foreground text-center">
+          Líderes de Célula não têm acesso à seção de relatórios gerais.
+          <br />
+          Relatórios específicos da sua célula podem estar disponíveis em outras seções.
+        </p>
+      </div>
+    );
+  }
+  
+  if (user?.role !== 'missionario') {
+     return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <ShieldAlert className="w-16 h-16 text-destructive mb-4" />
+        <h1 className="font-headline text-3xl font-semibold mb-2">Acesso Negado</h1>
+        <p className="text-muted-foreground">Você não tem permissão para acessar esta página.</p>
+      </div>
+    );
+  }
+
+
   return (
     <div className="space-y-6">
       <h1 className="font-headline text-3xl font-semibold">Relatórios Visuais</h1>
