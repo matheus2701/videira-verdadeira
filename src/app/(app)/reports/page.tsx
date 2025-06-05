@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, CalendarIcon } from "lucide-react";
+import { ShieldAlert, CalendarIcon, BarChartBig, HandCoins } from "lucide-react";
 import { DatePickerWithRange } from "@/components/ui/date-picker-range";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -92,3 +92,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
