@@ -9,51 +9,51 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 98%; /* Off-white */
-    --foreground: 220 15% 25%; /* Dark grayish blue for text */
+    --background: 240 14% 95%; /* #F0F0F4 - Cinza muito claro, azulado suave */
+    --foreground: 240 10% 10%; /* Cinza escuro para texto principal */
 
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 220 15% 25%;
+    --card: 240 14% 98%; /* Um pouco mais claro que o background principal */
+    --card-foreground: 240 10% 10%; /* Mesmo cinza escuro para texto nos cards */
 
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 220 15% 25%;
+    --popover: 240 14% 98%; /* Igual ao card */
+    --popover-foreground: 240 10% 10%; /* Igual ao card-foreground */
 
-    --primary: 197 71% 60%; /* Soft sky blue #87CEEB */
-    --primary-foreground: 210 40% 98%; /* Light text for primary */
+    --primary: 247 39% 74%; /* #A9A2D7 - Lavanda/lilás */
+    --primary-foreground: 240 10% 10%; /* Texto escuro sobre a cor primária */
 
-    --secondary: 240 60% 92%; /* Gentle lavender #E6E6FA */
-    --secondary-foreground: 240 25% 25%; /* Dark text for secondary */
+    --secondary: 240 10% 88%; /* Cinza claro neutro */
+    --secondary-foreground: 240 10% 10%; /* Texto escuro sobre a cor secundária */
 
-    --muted: 0 0% 92%; /* Light Gray */
-    --muted-foreground: 220 10% 45%; /* Darker gray for muted text */
+    --muted: 240 10% 80%; /* Cinza mais claro para elementos discretos */
+    --muted-foreground: 240 5% 40%; /* Cinza médio para texto em elementos discretos */
 
-    --accent: 240 67% 94%; /* Gentle lavender #E6E6FA - for highlights */
-    --accent-foreground: 240 25% 25%; /* Dark text for accent */
+    --accent: 184 20% 56%; /* #73A8AB - Verde-azulado suave/petróleo claro */
+    --accent-foreground: 0 0% 98%; /* Texto branco ou quase branco sobre a cor de destaque */
 
-    --destructive: 0 70% 60%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 70% 50%; /* Vermelho vivo para ações destrutivas */
+    --destructive-foreground: 0 0% 98%; /* Texto branco ou quase branco */
 
-    --border: 0 0% 88%; /* Light gray border */
-    --input: 0 0% 88%; /* Light gray input border */
-    --ring: 197 71% 55%; /* Primary color for focus rings */
+    --border: 240 10% 85%; /* Cor para bordas */
+    --input: 240 10% 90%; /* Cor de fundo para campos de input */
+    --ring: 247 39% 74%; /* Mesma cor do primary, para anéis de foco */
 
-    --chart-1: 197 71% 60%; /* Sky Blue */
-    --chart-2: 240 67% 85%; /* Lavender */
-    --chart-3: 197 50% 70%; /* Lighter Sky Blue */
-    --chart-4: 240 50% 75%; /* Lighter Lavender */
-    --chart-5: 0 0% 70%;  /* Gray accent */
+    --chart-1: 247 39% 74%; /* Primary */
+    --chart-2: 184 20% 56%; /* Accent */
+    --chart-3: 247 39% 84%; /* Lighter Primary */
+    --chart-4: 184 20% 66%; /* Lighter Accent */
+    --chart-5: 240 10% 80%;  /* Muted */
 
     --radius: 0.5rem;
 
-    /* Sidebar specific colors */
-    --sidebar-background: 0 0% 96%; /* Light gray for sidebar */
-    --sidebar-foreground: 220 15% 30%; /* Dark grayish blue for sidebar text */
-    --sidebar-primary: 197 71% 55%; /* Sky blue for active/hovered sidebar items */
-    --sidebar-primary-foreground: 210 40% 98%; /* Light text on sidebar primary */
-    --sidebar-accent: 197 71% 80%; /* Lighter sky blue for sidebar hover/accent state */
-    --sidebar-accent-foreground: 220 15% 25%; /* Dark text on sidebar accent */
-    --sidebar-border: 0 0% 85%; /* Gray-based border for sidebar elements */
-    --sidebar-ring: 197 71% 55%; /* Sky blue for focus rings within sidebar */
+    /* Sidebar specific colors - harmonized with the new theme */
+    --sidebar-background: 240 14% 98%; /* Matches card background */
+    --sidebar-foreground: 240 10% 10%; /* Matches main foreground */
+    --sidebar-primary: 247 39% 74%; /* Matches main primary */
+    --sidebar-primary-foreground: 240 10% 10%; /* Matches main primary-foreground */
+    --sidebar-accent: 184 20% 56%; /* Matches main accent */
+    --sidebar-accent-foreground: 0 0% 98%; /* Matches main accent-foreground */
+    --sidebar-border: 240 10% 85%; /* Matches main border */
+    --sidebar-ring: 247 39% 74%; /* Matches main ring */
   }
 
   .dark {
@@ -114,3 +114,4 @@ body {
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
