@@ -10,7 +10,7 @@ import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from "@/components/ui/form"; // Renamed FormLabel to avoid conflict
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCap
 import { PlusCircle, Filter, HandCoins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { Label } from "@/components/ui/label"; // Import standard Label
 
 const offeringSchema = z.object({
   amount: z.coerce.number().positive({ message: "Valor deve ser positivo." }),
@@ -169,7 +170,7 @@ export default function OfferingsPage() {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor (R$)</FormLabel>
+                      <RHFFormLabel>Valor (R$)</RHFFormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" placeholder="Ex: 50.00" {...field} />
                       </FormControl>
@@ -182,7 +183,7 @@ export default function OfferingsPage() {
                   name="date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Data da Oferta</FormLabel>
+                      <RHFFormLabel>Data da Oferta</RHFFormLabel>
                       <DatePicker 
                         date={field.value} 
                         setDate={field.onChange}
@@ -196,9 +197,9 @@ export default function OfferingsPage() {
                   name="cellGroupName"
                   render={({ field }) => (
                     <FormItem>
-                       <FormLabel>
+                       <RHFFormLabel>
                         {user?.role === 'lider_de_celula' ? 'Célula' : 'Nome da Célula (Opcional se geral)'}
-                      </FormLabel>
+                      </RHFFormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Nome da célula ofertante" 
@@ -215,7 +216,7 @@ export default function OfferingsPage() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notas (Opcional)</FormLabel>
+                      <RHFFormLabel>Notas (Opcional)</RHFFormLabel>
                       <FormControl>
                         <Textarea placeholder="Alguma observação sobre a oferta..." {...field} />
                       </FormControl>
@@ -246,10 +247,10 @@ export default function OfferingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FormItem>
-            <FormLabel>Mês</FormLabel>
+          <div className="space-y-2">
+            <Label htmlFor="filter-month">Mês</Label>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger>
+              <SelectTrigger id="filter-month">
                 <SelectValue placeholder="Selecione o mês" />
               </SelectTrigger>
               <SelectContent>
@@ -258,11 +259,11 @@ export default function OfferingsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </FormItem>
-          <FormItem>
-            <FormLabel>Ano</FormLabel>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="filter-year">Ano</Label>
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger>
+              <SelectTrigger id="filter-year">
                 <SelectValue placeholder="Selecione o ano" />
               </SelectTrigger>
               <SelectContent>
@@ -271,12 +272,12 @@ export default function OfferingsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </FormItem>
+          </div>
           {user?.role === 'missionario' && (
-            <FormItem>
-              <FormLabel>Grupo de Célula</FormLabel>
+            <div className="space-y-2">
+              <Label htmlFor="filter-cellgroup">Grupo de Célula</Label>
               <Select value={selectedCellGroup} onValueChange={setSelectedCellGroup}>
-                <SelectTrigger>
+                <SelectTrigger id="filter-cellgroup">
                   <SelectValue placeholder="Todas as células" />
                 </SelectTrigger>
                 <SelectContent>
@@ -287,7 +288,7 @@ export default function OfferingsPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </FormItem>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -345,3 +346,5 @@ export default function OfferingsPage() {
   );
 }
 
+
+    
