@@ -20,7 +20,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { usePathname } from 'next/navigation';
 import { mainNav, userNav } from '@/config/nav';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'; // Import AuthProvider
+import { AuthProvider } from '@/contexts/AuthContext'; // Import AuthProvider
+import { useAuth } from '@/hooks/useAuth'; // Corrected import for useAuth
 import type { Role } from '@/types';
 
 interface AppShellLayoutProps {
