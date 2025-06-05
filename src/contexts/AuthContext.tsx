@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useState, useMemo, useCallback } from 'react';
-import type { User, Role, Vida, CellGroup } from '@/types'; // Import Vida and CellGroup
+import type { User, Role, Vida, CellGroup, CellMeetingStatus } from '@/types'; // Import Vida and CellGroup
 
 interface AuthContextType {
   user: User | null;
@@ -30,8 +30,28 @@ const initialMockVidas: Vida[] = [
 
 // Mock initial Cell Groups
 const initialMockCellGroups: CellGroup[] = [
-    { id: 'celula-discipulos-001', name: 'Discípulos de Cristo', address: 'Rua da Fé, 123', meetingDay: 'Quarta-feira', meetingTime: '19:30', geracao: 'G1', liderVidaId: 'vida-lider-joao', liderNome: 'Líder João' },
-    { id: 'celula-leoes-002', name: 'Leões de Judá', address: 'Av. Esperança, 456', meetingDay: 'Quinta-feira', meetingTime: '20:00', geracao: 'G2' },
+    { 
+      id: 'celula-discipulos-001', 
+      name: 'Discípulos de Cristo', 
+      address: 'Rua da Fé, 123', 
+      meetingDay: 'Quarta-feira', 
+      meetingTime: '19:30', 
+      geracao: 'G1', 
+      liderVidaId: 'vida-lider-joao', 
+      liderNome: 'Líder João',
+      meetingStatus: 'aconteceu',
+      lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 2)) // 2 days ago
+    },
+    { 
+      id: 'celula-leoes-002', 
+      name: 'Leões de Judá', 
+      address: 'Av. Esperança, 456', 
+      meetingDay: 'Quinta-feira', 
+      meetingTime: '20:00', 
+      geracao: 'G2',
+      meetingStatus: 'agendada',
+      lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 7)) // 7 days ago
+    },
 ];
 
 
@@ -77,7 +97,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVidasData(prev => [newVida, ...prev]);
   };
    const updateMockCellGroup = (updatedCG: CellGroup) => {
-    setCellGroupsData(prev => prev.map(cg => cg.id === updatedCG.id ? updatedCG : cg));
+    setCellGroupsData(prev => {
+      const newGroups = prev.map(cg => cg.id === updatedCG.id ? updatedCG : cg);
+      // If user is a leader and their cell group was updated, update user's cellGroupName
+      if (user?.role === 'lider_de_celula' && user.cellGroupId === updatedCG.id && user.cellGroupName !== updatedCG.name) {
+        setUser(prevUser => prevUser ? {...prevUser, cellGroupName: updatedCG.name} : null);
+      }
+      return newGroups;
+    });
   };
   const addMockCellGroup = (newCG: CellGroup) => {
     setCellGroupsData(prev => [newCG, ...prev]);

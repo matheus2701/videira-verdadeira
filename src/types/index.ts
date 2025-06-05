@@ -26,6 +26,17 @@ export interface Vida {
   // historicoLiderancaIds?: string[]; // Futuro: para rastrear se já foi líder
 }
 
+export type CellMeetingStatus = 'agendada' | 'aconteceu' | 'nao_aconteceu_com_aviso' | 'nao_aconteceu_sem_aviso' | 'cancelada_com_aviso';
+
+export const cellMeetingStatusOptions: { value: CellMeetingStatus; label: string }[] = [
+  { value: 'agendada', label: 'Agendada' },
+  { value: 'aconteceu', label: 'Aconteceu' },
+  { value: 'nao_aconteceu_com_aviso', label: 'Não Aconteceu (Com Aviso)' },
+  { value: 'nao_aconteceu_sem_aviso', label: 'Não Aconteceu (Sem Aviso)' },
+  { value: 'cancelada_com_aviso', label: 'Cancelada (Com Aviso)' },
+];
+
+
 export interface CellGroup {
   id: string;
   name: string;
@@ -35,6 +46,9 @@ export interface CellGroup {
   geracao?: string;
   liderVidaId?: string; // ID da Vida que é líder desta célula
   liderNome?: string; // Nome da Vida líder para exibição
+  meetingStatus?: CellMeetingStatus;
+  meetingStatusReason?: string;
+  lastStatusUpdate?: Date;
   // totalMembros?: number; // Futuro: pode ser calculado
 }
 

@@ -12,10 +12,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit3, ShieldAlert, Users } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Edit3, ShieldAlert, Users, CalendarCheck2, CheckSquare, XSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import type { CellGroup } from "@/types";
+import type { CellGroup, CellMeetingStatus } from "@/types";
+import { cellMeetingStatusOptions } from "@/types";
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
 
 const myCellGroupSchema = z.object({
   name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres." }),
@@ -27,38 +33,45 @@ const myCellGroupSchema = z.object({
 
 type MyCellGroupFormValues = z.infer<typeof myCellGroupSchema>;
 
+const weeklyStatusSchema = z.object({
+    meetingStatus: z.enum(['agendada', 'aconteceu', 'nao_aconteceu_com_aviso', 'nao_aconteceu_sem_aviso', 'cancelada_com_aviso'], { required_error: "Status é obrigatório." }),
+    meetingStatusReason: z.string().optional(),
+    statusUpdateDate: z.date({ required_error: "Data da atualização é obrigatória."}),
+}).refine(data => {
+    const requiresReason = ['nao_aconteceu_com_aviso', 'nao_aconteceu_sem_aviso', 'cancelada_com_aviso'].includes(data.meetingStatus);
+    return !requiresReason || (requiresReason && data.meetingStatusReason && data.meetingStatusReason.trim().length > 0);
+}, {
+    message: "Motivo é obrigatório para este status.",
+    path: ["meetingStatusReason"],
+});
+
+type WeeklyStatusFormValues = z.infer<typeof weeklyStatusSchema>;
+
+
 const daysOfWeek = [
   "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"
 ];
 
 export default function MyCellPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { user, mockCellGroups, updateMockCellGroup } = useAuth(); // Adicionado mockCellGroups e updateMockCellGroup
+  const { user, mockCellGroups, updateMockCellGroup } = useAuth(); 
 
-  const [myCellData, setMyCellData] = useState<Partial<CellGroup>>(() => {
-    if (user?.cellGroupId) {
-      return mockCellGroups.find(cg => cg.id === user.cellGroupId) || {};
-    }
-    return {
-      name: user?.cellGroupName || `Célula de ${user?.name || 'Líder'}`,
-      liderNome: user?.name,
-      address: "Endereço Padrão",
-      meetingDay: "Quarta-feira",
-      meetingTime: "19:30",
-      geracao: "G1 (Exemplo)",
-    };
-  });
+  const [myCellData, setMyCellData] = useState<Partial<CellGroup>>({});
 
   const form = useForm<MyCellGroupFormValues>({
     resolver: zodResolver(myCellGroupSchema),
+    defaultValues: myCellData,
+  });
+
+  const statusForm = useForm<WeeklyStatusFormValues>({
+    resolver: zodResolver(weeklyStatusSchema),
     defaultValues: {
-      name: myCellData.name,
-      address: myCellData.address,
-      meetingDay: myCellData.meetingDay,
-      meetingTime: myCellData.meetingTime,
-      geracao: myCellData.geracao,
-    },
+        meetingStatus: myCellData?.meetingStatus || 'agendada',
+        meetingStatusReason: myCellData?.meetingStatusReason || "",
+        statusUpdateDate: myCellData?.lastStatusUpdate ? new Date(myCellData.lastStatusUpdate) : new Date(),
+    }
   });
   
   useEffect(() => {
@@ -73,17 +86,23 @@ export default function MyCellPage() {
                 meetingTime: currentCell.meetingTime,
                 geracao: currentCell.geracao,
             });
+            statusForm.reset({
+                meetingStatus: currentCell.meetingStatus || 'agendada',
+                meetingStatusReason: currentCell.meetingStatusReason || "",
+                statusUpdateDate: currentCell.lastStatusUpdate ? new Date(currentCell.lastStatusUpdate) : new Date(),
+            });
         } else {
-             // Caso célula do user não seja encontrada nos mocks (improvável com dados atuais, mas bom para robustez)
             const defaultLeaderCellName = user?.name ? `Célula de ${user.name}` : "Minha Célula";
-            const fallbackData = {
-                id: user.cellGroupId,
+            const fallbackData: CellGroup = {
+                id: user.cellGroupId, // Should have an ID
                 name: defaultLeaderCellName,
                 address: "Rua da Fé, 123, Bairro Esperança",
                 meetingDay: "Quarta-feira",
                 meetingTime: "19:30",
                 liderNome: user.name,
                 geracao: "G1 (Padrão)",
+                meetingStatus: 'agendada',
+                lastStatusUpdate: new Date(),
             };
             setMyCellData(fallbackData);
             form.reset({
@@ -93,9 +112,14 @@ export default function MyCellPage() {
                 meetingTime: fallbackData.meetingTime,
                 geracao: fallbackData.geracao,
             });
+            statusForm.reset({
+                meetingStatus: fallbackData.meetingStatus,
+                meetingStatusReason: fallbackData.meetingStatusReason || "",
+                statusUpdateDate: fallbackData.lastStatusUpdate ? new Date(fallbackData.lastStatusUpdate) : new Date(),
+            });
         }
-    } else {
-        const defaultLeaderCellName = user?.name ? `Célula de ${user.name}` : "Minha Célula";
+    } else if (user) { // User exists but no cellGroupId
+         const defaultLeaderCellName = user?.name ? `Célula de ${user.name}` : "Minha Célula";
          const initialData = {
             name: defaultLeaderCellName,
             liderNome: user?.name,
@@ -103,6 +127,8 @@ export default function MyCellPage() {
             meetingDay: "Quarta-feira", 
             meetingTime: "19:30", 
             geracao: "G1 (Exemplo)", 
+            meetingStatus: 'agendada' as CellMeetingStatus,
+            lastStatusUpdate: new Date(),
          };
          setMyCellData(initialData);
          form.reset({
@@ -112,9 +138,14 @@ export default function MyCellPage() {
             meetingTime: initialData.meetingTime,
             geracao: initialData.geracao,
         });
+        statusForm.reset({
+            meetingStatus: initialData.meetingStatus,
+            meetingStatusReason: "",
+            statusUpdateDate: initialData.lastStatusUpdate,
+        });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, mockCellGroups]); // Adicionado mockCellGroups como dependência
+  }, [user, mockCellGroups]); 
 
 
   function onSubmitEdit(values: MyCellGroupFormValues) {
@@ -125,21 +156,44 @@ export default function MyCellPage() {
     const updatedCell: CellGroup = {
       ...myCellData,
       ...values,
-      id: user.cellGroupId, // Garante que o ID está correto
-      liderNome: user.name, // O líder é o usuário logado
-      name: values.name, // Garantir que o nome seja atualizado
+      id: user.cellGroupId, 
+      liderNome: user.name, 
+      name: values.name, 
       address: values.address,
       meetingDay: values.meetingDay,
       meetingTime: values.meetingTime,
       geracao: values.geracao,
+      // meetingStatus and reason are handled by the other form
     };
-    updateMockCellGroup(updatedCell); // Atualiza no contexto (simulação)
-    setMyCellData(updatedCell); // Atualiza estado local para re-renderização imediata
+    updateMockCellGroup(updatedCell); 
+    setMyCellData(updatedCell); 
     toast({
       title: "Sucesso!",
       description: "Dados da sua célula atualizados.",
     });
     setIsEditDialogOpen(false);
+  }
+
+  function onSubmitStatusUpdate(values: WeeklyStatusFormValues) {
+    if (!user?.cellGroupId || !myCellData.id) {
+        toast({ title: "Erro", description: "Célula não identificada para atualizar status.", variant: "destructive" });
+        return;
+    }
+    const updatedCellWithStatus: CellGroup = {
+        ...myCellData,
+        id: myCellData.id, // Ensure ID is present
+        name: myCellData.name!, // Ensure name is present
+        address: myCellData.address!, // Ensure address is present
+        meetingDay: myCellData.meetingDay!,
+        meetingTime: myCellData.meetingTime!,
+        meetingStatus: values.meetingStatus,
+        meetingStatusReason: values.meetingStatusReason,
+        lastStatusUpdate: values.statusUpdateDate,
+    };
+    updateMockCellGroup(updatedCellWithStatus);
+    setMyCellData(updatedCellWithStatus);
+    toast({ title: "Sucesso!", description: "Status semanal da célula atualizado."});
+    setIsStatusDialogOpen(false);
   }
 
   if (user?.role !== 'lider_de_celula') {
@@ -152,7 +206,7 @@ export default function MyCellPage() {
     );
   }
   
-  if (!user.cellGroupId) { // Não precisa checar cellGroupName aqui, pois o nome da célula vem de myCellData
+  if (!user.cellGroupId) { 
      return (
       <div className="flex flex-col items-center justify-center h-full">
         <ShieldAlert className="w-16 h-16 text-yellow-500 mb-4" />
@@ -161,6 +215,9 @@ export default function MyCellPage() {
       </div>
     );
   }
+  
+  const showStatusReasonField = ['nao_aconteceu_com_aviso', 'nao_aconteceu_sem_aviso', 'cancelada_com_aviso'].includes(statusForm.watch('meetingStatus') || '');
+  const currentStatusLabel = cellMeetingStatusOptions.find(opt => opt.value === myCellData.meetingStatus)?.label;
 
 
   return (
@@ -209,6 +266,101 @@ export default function MyCellPage() {
             <p><strong className="font-medium">Geração:</strong> {myCellData.geracao || 'Não definida'}</p>
             <p><strong className="font-medium">Dia da Reunião:</strong> {myCellData.meetingDay}</p>
             <p><strong className="font-medium">Horário:</strong> {myCellData.meetingTime}</p>
+            <p><strong className="font-medium">Status da Última Reunião:</strong> {currentStatusLabel || 'Não informado'}</p>
+            {myCellData.meetingStatusReason && <p><strong className="font-medium">Motivo:</strong> {myCellData.meetingStatusReason}</p>}
+            {myCellData.lastStatusUpdate && <p><strong className="font-medium">Última Atualização de Status:</strong> {format(new Date(myCellData.lastStatusUpdate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
+        </CardContent>
+      </Card>
+
+       <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle className="font-headline">Atualização Semanal da Célula</CardTitle>
+                <CardDescription className="font-body">
+                    Registre o status da reunião da sua célula para esta semana.
+                </CardDescription>
+            </div>
+            <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="secondary">
+                        <CalendarCheck2 className="mr-2 h-4 w-4" /> Registrar Status
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-headline">Registrar Status da Reunião Semanal</DialogTitle>
+                        <DialogDescription className="font-body">Informe como foi a reunião da sua célula.</DialogDescription>
+                    </DialogHeader>
+                    <Form {...statusForm}>
+                        <form onSubmit={statusForm.handleSubmit(onSubmitStatusUpdate)} className="space-y-4 py-4">
+                            <FormField
+                                control={statusForm.control}
+                                name="statusUpdateDate"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Data da Atualização</FormLabel>
+                                    <DatePicker date={field.value} setDate={field.onChange} />
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={statusForm.control}
+                                name="meetingStatus"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Status da Reunião</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                        <SelectValue placeholder="Selecione o status" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {cellMeetingStatusOptions.map(option => (
+                                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            {showStatusReasonField && (
+                                <FormField
+                                control={statusForm.control}
+                                name="meetingStatusReason"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Motivo</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Descreva o motivo do status..." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                            )}
+                            <DialogFooter className="pt-4">
+                                <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
+                                <Button type="submit">Salvar Status</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+        </CardHeader>
+        <CardContent>
+             <p className="text-sm text-muted-foreground font-body">
+                {myCellData.meetingStatus === 'aconteceu' && <CheckSquare className="inline mr-2 h-5 w-5 text-green-600" />}
+                {myCellData.meetingStatus && myCellData.meetingStatus !== 'aconteceu' && <XSquare className="inline mr-2 h-5 w-5 text-red-600" />}
+                Status atual da reunião: <span className="font-semibold">{currentStatusLabel || 'Pendente de atualização'}</span>.
+            </p>
+            {myCellData.lastStatusUpdate && (
+                 <p className="text-xs text-muted-foreground font-body mt-1">
+                    Última atualização em: {format(new Date(myCellData.lastStatusUpdate), "dd/MM/yyyy", { locale: ptBR })}.
+                </p>
+            )}
         </CardContent>
       </Card>
 

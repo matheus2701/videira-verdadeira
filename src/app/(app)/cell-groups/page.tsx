@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,11 +11,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
-import { PlusCircle, ShieldAlert, Edit, UserCog } from "lucide-react";
+import { PlusCircle, ShieldAlert, Edit, UserCog, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import type { CellGroup, Vida } from "@/types";
+import type { CellGroup, Vida, CellMeetingStatus } from "@/types";
+import { cellMeetingStatusOptions } from "@/types";
 
 const cellGroupSchema = z.object({
   name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres." }),
@@ -23,7 +25,9 @@ const cellGroupSchema = z.object({
   meetingDay: z.string({ required_error: "Selecione o dia da reunião." }),
   meetingTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Horário inválido (HH:MM)." }),
   geracao: z.string().optional(),
-  liderVidaId: z.string().optional(), // ID da Vida que é líder
+  liderVidaId: z.string().optional(),
+  meetingStatus: z.enum(['agendada', 'aconteceu', 'nao_aconteceu_com_aviso', 'nao_aconteceu_sem_aviso', 'cancelada_com_aviso']).optional(),
+  meetingStatusReason: z.string().optional(),
 });
 
 type CellGroupFormValues = z.infer<typeof cellGroupSchema>;
@@ -32,25 +36,15 @@ const daysOfWeek = [
   "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"
 ];
 
-// Mock Vidas (para selecionar líder)
-const mockVidasLideres: Pick<Vida, 'id' | 'nomeCompleto' | 'status'>[] = [
-    { id: 'vida1', nomeCompleto: 'Ana Silva', status: 'lider_ativo' },
-    { id: 'vida_lider_potencial', nomeCompleto: 'Carlos Matos', status: 'lider_em_treinamento' },
-];
-
-// Mock initial Cell Groups
-const initialMockCellGroups: CellGroup[] = [
-    { id: 'celula-alpha-123', name: 'Discípulos de Cristo', address: 'Rua da Fé, 123', meetingDay: 'Quarta-feira', meetingTime: '19:30', geracao: 'G1', liderVidaId: 'vida1', liderNome: 'Ana Silva' },
-    { id: 'celula-beta-456', name: 'Leões de Judá', address: 'Av. Esperança, 456', meetingDay: 'Quinta-feira', meetingTime: '20:00', geracao: 'G2' },
-];
-
-
 export default function CellGroupsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCellGroup, setEditingCellGroup] = useState<CellGroup | null>(null);
-  const [cellGroups, setCellGroups] = useState<CellGroup[]>(initialMockCellGroups);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, mockVidas, mockCellGroups, addMockCellGroup, updateMockCellGroup } = useAuth();
+
+  const [searchTermName, setSearchTermName] = useState("");
+  const [searchTermLeader, setSearchTermLeader] = useState("");
+  const [searchTermGeneration, setSearchTermGeneration] = useState("");
 
   const form = useForm<CellGroupFormValues>({
     resolver: zodResolver(cellGroupSchema),
@@ -61,8 +55,19 @@ export default function CellGroupsPage() {
       meetingTime: "",
       geracao: "",
       liderVidaId: undefined,
+      meetingStatus: "agendada",
+      meetingStatusReason: "",
     },
   });
+  
+  const filteredCellGroups = useMemo(() => {
+    return mockCellGroups.filter(cg => 
+      cg.name.toLowerCase().includes(searchTermName.toLowerCase()) &&
+      (cg.liderNome || '').toLowerCase().includes(searchTermLeader.toLowerCase()) &&
+      (cg.geracao || '').toLowerCase().includes(searchTermGeneration.toLowerCase())
+    );
+  }, [mockCellGroups, searchTermName, searchTermLeader, searchTermGeneration]);
+
 
   useEffect(() => {
     if (editingCellGroup) {
@@ -73,37 +78,44 @@ export default function CellGroupsPage() {
         meetingTime: editingCellGroup.meetingTime,
         geracao: editingCellGroup.geracao,
         liderVidaId: editingCellGroup.liderVidaId,
+        meetingStatus: editingCellGroup.meetingStatus || "agendada",
+        meetingStatusReason: editingCellGroup.meetingStatusReason,
       });
       setIsDialogOpen(true);
     } else {
       form.reset({
-        name: "", address: "", meetingDay: undefined, meetingTime: "", geracao: "", liderVidaId: undefined,
+        name: "", address: "", meetingDay: undefined, meetingTime: "", geracao: "", liderVidaId: undefined, meetingStatus: "agendada", meetingStatusReason: "",
       });
     }
   }, [editingCellGroup, form]);
 
 
   function onSubmit(values: CellGroupFormValues) {
-    const liderSelecionado = mockVidasLideres.find(v => v.id === values.liderVidaId);
-    const cellGroupData: Omit<CellGroup, 'id'> & Partial<Pick<CellGroup, 'id'>> = {
-      ...values,
-      liderNome: liderSelecionado?.nomeCompleto,
-    };
-
+    const liderSelecionado = mockVidas.find(v => v.id === values.liderVidaId && (v.status === 'lider_ativo' || v.status === 'lider_em_treinamento'));
+    
     if (editingCellGroup) {
-      const updatedCg = { ...editingCellGroup, ...cellGroupData };
-      setCellGroups(cellGroups.map(cg => cg.id === editingCellGroup.id ? updatedCg : cg));
+      const updatedCg: CellGroup = { 
+        ...editingCellGroup, 
+        ...values,
+        liderNome: liderSelecionado?.nomeCompleto,
+        meetingStatus: values.meetingStatus as CellMeetingStatus,
+        lastStatusUpdate: new Date(),
+      };
+      updateMockCellGroup(updatedCg);
       toast({ title: "Sucesso!", description: "Grupo de Células atualizado." });
     } else {
       const newCellGroup: CellGroup = {
         id: `cg-${Date.now()}`,
-        ...cellGroupData,
+        ...values,
         name: values.name,
         address: values.address,
         meetingDay: values.meetingDay,
         meetingTime: values.meetingTime,
+        liderNome: liderSelecionado?.nomeCompleto,
+        meetingStatus: values.meetingStatus as CellMeetingStatus,
+        lastStatusUpdate: new Date(),
       };
-      setCellGroups(prev => [newCellGroup, ...prev]);
+      addMockCellGroup(newCellGroup);
       toast({ title: "Sucesso!", description: "Grupo de Células adicionado." });
     }
     setIsDialogOpen(false);
@@ -129,6 +141,8 @@ export default function CellGroupsPage() {
         </div>
     );
   }
+
+  const showReasonField = ['nao_aconteceu_com_aviso', 'nao_aconteceu_sem_aviso', 'cancelada_com_aviso'].includes(form.watch('meetingStatus') || '');
 
 
   return (
@@ -158,9 +172,9 @@ export default function CellGroupsPage() {
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecione um líder (status Ativo/Treinamento)" /></SelectTrigger></FormControl>
                         <SelectContent>
-                          <SelectItem value=" ">Nenhum</SelectItem>
-                          {mockVidasLideres.filter(v => v.status === 'lider_ativo' || v.status === 'lider_em_treinamento').map(lider => (
-                            <SelectItem key={lider.id} value={lider.id}>{lider.nomeCompleto} ({lider.status.replace('_',' ')})</SelectItem>
+                          <SelectItem value="">Nenhum</SelectItem>
+                          {mockVidas.filter(v => v.status === 'lider_ativo' || v.status === 'lider_em_treinamento').map(lider => (
+                            <SelectItem key={lider.id} value={lider.id}>{lider.nomeCompleto} ({lider.status.replace(/_/g,' ')})</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -173,6 +187,43 @@ export default function CellGroupsPage() {
                     <FormField control={form.control} name="meetingDay" render={({ field }) => ( <FormItem><FormLabel>Dia da Reunião</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione o dia" /></SelectTrigger></FormControl><SelectContent>{daysOfWeek.map(day => (<SelectItem key={day} value={day}>{day}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="meetingTime" render={({ field }) => ( <FormItem><FormLabel>Horário (HH:MM)</FormLabel><FormControl><Input placeholder="Ex: 19:30" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
+                  <FormField
+                    control={form.control}
+                    name="meetingStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status da Reunião</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || 'agendada'}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {cellMeetingStatusOptions.map(option => (
+                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {showReasonField && (
+                    <FormField
+                      control={form.control}
+                      name="meetingStatusReason"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Motivo do Status</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Descreva o motivo..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <DialogFooter className="pt-4 sticky bottom-0 bg-background pb-1">
                     <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
                     <Button type="submit">{editingCellGroup ? "Salvar Alterações" : "Salvar Grupo"}</Button>
@@ -183,6 +234,32 @@ export default function CellGroupsPage() {
           </Dialog>
         )}
       </div>
+
+      {user?.role === 'missionario' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5"/>
+              <CardTitle className="font-headline">Filtros</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormItem>
+              <FormLabel>Nome do Grupo</FormLabel>
+              <Input placeholder="Buscar por nome..." value={searchTermName} onChange={(e) => setSearchTermName(e.target.value)} />
+            </FormItem>
+            <FormItem>
+              <FormLabel>Nome do Líder</FormLabel>
+              <Input placeholder="Buscar por líder..." value={searchTermLeader} onChange={(e) => setSearchTermLeader(e.target.value)} />
+            </FormItem>
+            <FormItem>
+              <FormLabel>Geração</FormLabel>
+              <Input placeholder="Buscar por geração..." value={searchTermGeneration} onChange={(e) => setSearchTermGeneration(e.target.value)} />
+            </FormItem>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Lista de Grupos de Células</CardTitle>
@@ -191,9 +268,9 @@ export default function CellGroupsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {cellGroups.length === 0 ? (
+          {filteredCellGroups.length === 0 ? (
             <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-              Nenhum grupo de célula cadastrado ainda. Clique em "Adicionar Grupo" para começar.
+              Nenhum grupo de célula cadastrado ou encontrado com os filtros atuais.
             </div>
           ) : (
             <Table>
@@ -203,18 +280,18 @@ export default function CellGroupsPage() {
                   <TableHead>Líder</TableHead>
                   <TableHead>Geração</TableHead>
                   <TableHead>Dia/Hora</TableHead>
-                  <TableHead>Endereço</TableHead>
+                  <TableHead>Status Reunião</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cellGroups.map((cg) => (
+                {filteredCellGroups.map((cg) => (
                   <TableRow key={cg.id}>
                     <TableCell className="font-medium">{cg.name}</TableCell>
                     <TableCell>{cg.liderNome || <span className="text-muted-foreground italic">Não definido</span>}</TableCell>
                     <TableCell>{cg.geracao || <span className="text-muted-foreground italic">N/A</span>}</TableCell>
                     <TableCell>{cg.meetingDay}, {cg.meetingTime}</TableCell>
-                    <TableCell>{cg.address}</TableCell>
+                    <TableCell>{cellMeetingStatusOptions.find(opt => opt.value === cg.meetingStatus)?.label || <span className="text-muted-foreground italic">N/A</span>}</TableCell>
                     <TableCell className="text-right">
                        <Button variant="outline" size="sm" onClick={() => handleEdit(cg)}>
                         <Edit className="mr-1 h-3 w-3" /> Editar
@@ -223,6 +300,9 @@ export default function CellGroupsPage() {
                   </TableRow>
                 ))}
               </TableBody>
+               <TableCaption>
+                Exibindo {filteredCellGroups.length} de {mockCellGroups.length} grupos.
+              </TableCaption>
             </Table>
           )}
         </CardContent>
