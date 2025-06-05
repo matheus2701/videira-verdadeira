@@ -4,8 +4,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert } from "lucide-react";
-// import { DatePickerWithRange } from "@/components/ui/date-picker-range"; // Placeholder for date picker
+import { ShieldAlert, CalendarIcon } from "lucide-react";
+import { DatePickerWithRange } from "@/components/ui/date-picker-range";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -46,13 +47,13 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            {/* <DatePickerWithRange /> Placeholder */}
-            <p className="text-sm text-muted-foreground font-body">Seletor de Data (placeholder)</p>
-            <Button variant="outline">Gerar Relatório</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <DatePickerWithRange />
+            <Button variant="outline" className="font-body">Gerar Relatório</Button>
           </div>
           {/* Placeholder for chart */}
-          <div className="h-[300px] mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
+          <div className="h-[300px] mt-4 p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground">
+             <BarChartBig className="w-12 h-12 mb-2 text-primary/70" />
             Gráfico de crescimento de membros será exibido aqui.
           </div>
         </CardContent>
@@ -66,17 +67,24 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            {/* <DatePickerWithRange /> Placeholder */}
-            <p className="text-sm text-muted-foreground font-body">Seletor de Data (placeholder)</p>
-            <select className="p-2 border rounded-md bg-background font-body">
-              <option>Todas as Células</option>
-              {/* Options for cells */}
-            </select>
-            <Button variant="outline">Gerar Relatório</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <DatePickerWithRange />
+            <Select defaultValue="todas">
+              <SelectTrigger className="w-auto min-w-[200px] font-body">
+                <SelectValue placeholder="Filtrar por Célula" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as Células</SelectItem>
+                <SelectItem value="celula_a">Célula Discípulos (Exemplo)</SelectItem>
+                <SelectItem value="celula_b">Célula Leões de Judá (Exemplo)</SelectItem>
+                {/* Mais opções de células seriam carregadas dinamicamente */}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" className="font-body">Gerar Relatório</Button>
           </div>
           {/* Placeholder for chart/table */}
-          <div className="h-[300px] mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
+          <div className="h-[300px] mt-4 p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground">
+            <HandCoins className="w-12 h-12 mb-2 text-primary/70" />
             Relatório de ofertas será exibido aqui.
           </div>
         </CardContent>

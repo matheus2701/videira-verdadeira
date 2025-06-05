@@ -1,4 +1,6 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BookOpen } from "lucide-react";
 
 export default function LessonsPage() {
   return (
@@ -12,13 +14,16 @@ export default function LessonsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="font-body text-muted-foreground">
-            Visualização do progresso das lições. Isso pode ser uma tabela mostrando cada Casa de Paz ativa
-            e o status de conclusão de cada uma das 8 lições (Ex: checkboxes ou barras de progresso).
-          </p>
-          {/* Placeholder for progress tracking UI */}
-          <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-            Nenhum progresso de lição para exibir. Acompanhe o progresso a partir da página de "Casas de Paz".
+          <div className="mt-8 p-10 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center text-muted-foreground space-y-4">
+            <BookOpen className="w-16 h-16 text-primary/70" />
+            <p className="text-lg font-medium font-headline">Acompanhamento Detalhado em Breve!</p>
+            <p className="font-body text-sm max-w-md">
+              Esta seção permitirá que você visualize o progresso de cada Casa de Paz através das 8 lições fundamentais.
+              Poderá ver quais lições foram concluídas e ter uma visão clara do desenvolvimento espiritual dos participantes.
+            </p>
+            <p className="font-body text-xs">
+              Por enquanto, continue gerenciando suas Casas de Paz na seção dedicada.
+            </p>
           </div>
         </CardContent>
       </Card>
