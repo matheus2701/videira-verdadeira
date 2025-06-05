@@ -1,10 +1,11 @@
 
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import Link from 'next/link'; // Added import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
@@ -55,7 +56,7 @@ export default function MyCellPage() {
   });
   
   // Resetar form se user mudar (para demo) ou myCellData mudar
-  useState(() => {
+  useEffect(() => {
     form.reset({
       name: myCellData.name,
       address: myCellData.address,
