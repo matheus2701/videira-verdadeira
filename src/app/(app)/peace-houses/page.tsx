@@ -91,7 +91,7 @@ export default function PeaceHousesPage() {
                   name="hostName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome do Anfitrião(ã)</FormLabel>
+                      <FormLabel>Nome do Filho da Paz</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Família Silva" {...field} />
                       </FormControl>
@@ -104,7 +104,7 @@ export default function PeaceHousesPage() {
                   name="hostContact"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contato do Anfitrião(ã)</FormLabel>
+                      <FormLabel>Contato do Filho da Paz</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: (XX) XXXXX-XXXX" {...field} />
                       </FormControl>
