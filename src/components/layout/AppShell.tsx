@@ -20,8 +20,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { usePathname } from 'next/navigation';
 import { mainNav, userNav } from '@/config/nav';
-import { AuthProvider } from '@/contexts/AuthContext'; // Import AuthProvider
-import { useAuth } from '@/hooks/useAuth'; // Corrected import for useAuth
+import { AuthProvider } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import type { Role } from '@/types';
 
 interface AppShellLayoutProps {
@@ -48,11 +48,13 @@ function AppShellInner({ children }: AppShellLayoutProps) {
   return (
     <SidebarProvider defaultOpen>
       <Sidebar className="border-r border-sidebar-border" collapsible="icon">
-        <SidebarHeader className="p-4 flex items-center gap-2 justify-start group-data-[collapsible=icon]:justify-center">
-          <Icons.Logo className="h-8 w-8 text-primary" />
-          <h1 className="font-headline text-2xl font-semibold text-foreground group-data-[collapsible=icon]:hidden">
-            Videira Verdadeira
-          </h1>
+        <SidebarHeader className="p-4 border-b border-sidebar-border flex items-center justify-start group-data-[collapsible=icon]:justify-center">
+          <Link href="/dashboard" className="flex items-center gap-2 font-headline text-lg font-semibold text-primary">
+            <Icons.Logo className="h-7 w-7 text-primary" />
+            <span className="group-data-[collapsible=icon]:hidden">
+              Videira Verdadeira
+            </span>
+          </Link>
         </SidebarHeader>
         <ScrollArea className="flex-1">
           <SidebarContent className="p-2">
