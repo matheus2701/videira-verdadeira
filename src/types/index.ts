@@ -2,25 +2,52 @@
 export type Role = 'missionario' | 'lider_de_celula';
 
 export interface User {
-  id: string;
-  name: string;
+  id: string; // ID do sistema de autenticação
+  name: string; // Nome para exibição no perfil (pode ser da Vida associada)
   email: string;
   role: Role;
-  cellGroupId?: string; // ID da célula que o líder lidera
-  cellGroupName?: string; // Nome da célula para exibição
+  vidaId?: string; // ID da Vida associada, se o usuário for um líder de célula
+  cellGroupId?: string; // ID da célula que o líder (User) lidera
+  cellGroupName?: string; // Nome da célula para exibição rápida
 }
 
-// Interface para um item de navegação, atualizada para incluir papéis
+export type VidaStatus = 'membro' | 'lider_em_treinamento' | 'lider_ativo';
+
+export interface Vida {
+  id: string; // ID único da Vida
+  nomeCompleto: string;
+  dataNascimento: Date;
+  telefone?: string;
+  idCelula: string; // ID da célula à qual a Vida está vinculada
+  nomeCelula?: string; // Nome da célula para exibição (pode ser buscado)
+  geracaoCelula?: string; // Geração da célula (pode ser buscado ou informado)
+  status: VidaStatus;
+  createdAt: Date;
+  // historicoLiderancaIds?: string[]; // Futuro: para rastrear se já foi líder
+}
+
+export interface CellGroup {
+  id: string;
+  name: string;
+  address: string;
+  meetingDay: string;
+  meetingTime: string;
+  geracao?: string;
+  liderVidaId?: string; // ID da Vida que é líder desta célula
+  liderNome?: string; // Nome da Vida líder para exibição
+  // totalMembros?: number; // Futuro: pode ser calculado
+}
+
+
 export interface NavItemConfig {
   label: string;
   href: string;
-  iconKey: string; // Manter como string para ser chave de Icons
+  iconKey: string;
   disabled?: boolean;
-  roles?: Role[]; // Papéis que podem ver este item. Se undefined, todos podem ver.
-  exact?: boolean; // Se o path deve ser exato para isActive
+  roles?: Role[];
+  exact?: boolean;
 }
 
-// Types for Encounter Teams feature
 export const encounterTeamRoles = ['Líder da Equipe', 'Apoio Geral', 'Apoio Santuário', 'Cozinha', 'Intercessor'] as const;
 export type EncounterTeamRole = typeof encounterTeamRoles[number];
 

@@ -1,30 +1,33 @@
+
 import {
   Grape,
   LayoutDashboard,
-  Users,
+  Users, // Usado para "Vidas"
   HandCoins,
   ShieldCheck,
   ClipboardCheck,
   BarChartBig,
-  LayoutGrid,
+  LayoutGrid, // Usado para "Grupos de Células"
   Settings,
   LogOut,
-  UsersRound, // Added for Encounter Teams
+  UsersRound, // Usado para Encounter Teams
+  UserCog, // Usado para "Líderes"
   type LucideIcon,
 } from 'lucide-react';
 
 export const Icons = {
   Logo: Grape,
   Dashboard: LayoutDashboard,
+  Vidas: Users, // Renomeado de Members para Vidas
   CellGroups: LayoutGrid,
-  Members: Users,
+  Lideres: UserCog, // Novo ícone para Líderes
   Offerings: HandCoins,
   PeaceHouses: ShieldCheck,
   Lessons: ClipboardCheck,
   Reports: BarChartBig,
   Settings: Settings,
   Logout: LogOut,
-  EncounterTeams: UsersRound, // Added for Encounter Teams
+  EncounterTeams: UsersRound,
 };
 
 export type IconKey = keyof typeof Icons;

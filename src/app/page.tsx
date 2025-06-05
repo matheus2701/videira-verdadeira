@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
@@ -44,9 +45,10 @@ export default function LandingPage() {
               <p className="text-muted-foreground">Organize e acompanhe os detalhes de cada célula.</p>
             </div>
             <div className="p-6 bg-card rounded-lg shadow-md">
-              <Icons.Members className="h-10 w-10 text-primary mb-4" />
-              <h3 className="font-headline text-2xl font-semibold text-foreground mb-2">Membros</h3>
-              <p className="text-muted-foreground">Mantenha um diretório completo dos seus membros.</p>
+              {/* Alterado Icons.Members para Icons.Vidas */}
+              <Icons.Vidas className="h-10 w-10 text-primary mb-4" /> 
+              <h3 className="font-headline text-2xl font-semibold text-foreground mb-2">Vidas</h3>
+              <p className="text-muted-foreground">Mantenha um diretório completo das suas vidas.</p>
             </div>
             <div className="p-6 bg-card rounded-lg shadow-md">
               <Icons.PeaceHouses className="h-10 w-10 text-primary mb-4" />

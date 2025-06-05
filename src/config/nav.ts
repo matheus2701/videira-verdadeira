@@ -15,43 +15,49 @@ export const mainNav: NavItemConfig[] = [
     label: 'Grupos de Células',
     href: '/cell-groups',
     iconKey: 'CellGroups',
-    roles: ['missionario'], // Apenas missionário gerencia TODAS as células
+    roles: ['missionario'],
   },
   {
-    label: 'Minha Célula', // Novo item para Líder de Célula
-    href: '/cell-groups/my-cell', // Poderia ser /cell-groups?id=my ou uma rota específica
+    label: 'Minha Célula',
+    href: '/cell-groups/my-cell',
     iconKey: 'CellGroups',
     roles: ['lider_de_celula'],
   },
   {
-    label: 'Membros',
-    href: '/members',
-    iconKey: 'Members',
+    label: 'Vidas', // Renomeado de Membros
+    href: '/vidas', // Rota atualizada
+    iconKey: 'Vidas', // Ícone atualizado
     roles: ['missionario', 'lider_de_celula'],
   },
   {
-    label: 'Equipes de Encontro', // New Menu Item
+    label: 'Líderes', // Novo menu
+    href: '/lideres',
+    iconKey: 'Lideres',
+    roles: ['missionario'], // Inicialmente para missionários
+  },
+  {
+    label: 'Equipes de Encontro',
     href: '/encounter-teams',
     iconKey: 'EncounterTeams',
-    roles: ['missionario'], // Assuming only missionario manages this for now
+    roles: ['missionario'],
   },
   {
     label: 'Ofertas',
     href: '/offerings',
     iconKey: 'Offerings',
-    roles: ['missionario', 'lider_de_celula'], // Líder vê/registra ofertas da sua célula
+    roles: ['missionario', 'lider_de_celula'],
   },
   {
     label: 'Casas de Paz',
     href: '/peace-houses',
     iconKey: 'PeaceHouses',
-    roles: ['missionario', 'lider_de_celula'], // Líder vê/registra CPs da sua célula
+    roles: ['missionario', 'lider_de_celula'],
   },
   {
     label: 'Progresso das Lições',
     href: '/lessons',
     iconKey: 'Lessons',
-    roles: ['missionario', 'lider_de_celula'], // Líder vê progresso da sua célula/CPs
+    roles: ['missionario', 'lider_de_celula'],
   },
   {
     label: 'Relatórios',
@@ -70,7 +76,7 @@ export const userNav: NavItemConfig[] = [
   },
   {
     label: 'Sair',
-    href: '#', // Placeholder, o logout será tratado pelo AuthContext
+    href: '#', 
     iconKey: 'Logout',
     roles: ['missionario', 'lider_de_celula'],
   },
