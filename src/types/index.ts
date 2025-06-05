@@ -19,3 +19,25 @@ export interface NavItemConfig {
   roles?: Role[]; // Papéis que podem ver este item. Se undefined, todos podem ver.
   exact?: boolean; // Se o path deve ser exato para isActive
 }
+
+// Types for Encounter Teams feature
+export const encounterTeamRoles = ['Líder da Equipe', 'Apoio Geral', 'Apoio Santuário', 'Cozinha', 'Intercessor'] as const;
+export type EncounterTeamRole = typeof encounterTeamRoles[number];
+
+export interface EncounterTeam {
+  id: string;
+  name: string;
+  eventDate?: Date;
+  description?: string;
+  createdAt: Date;
+}
+
+export interface EncounterTeamMember {
+  id: string;
+  encounterTeamId: string;
+  name: string;
+  contact?: string;
+  teamRole: EncounterTeamRole;
+  notes?: string;
+  addedAt: Date;
+}

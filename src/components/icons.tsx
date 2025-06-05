@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   Settings,
   LogOut,
+  UsersRound, // Added for Encounter Teams
   type LucideIcon,
 } from 'lucide-react';
 
@@ -23,6 +24,7 @@ export const Icons = {
   Reports: BarChartBig,
   Settings: Settings,
   Logout: LogOut,
+  EncounterTeams: UsersRound, // Added for Encounter Teams
 };
 
 export type IconKey = keyof typeof Icons;

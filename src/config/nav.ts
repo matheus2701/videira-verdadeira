@@ -30,6 +30,12 @@ export const mainNav: NavItemConfig[] = [
     roles: ['missionario', 'lider_de_celula'],
   },
   {
+    label: 'Equipes de Encontro', // New Menu Item
+    href: '/encounter-teams',
+    iconKey: 'EncounterTeams',
+    roles: ['missionario'], // Assuming only missionario manages this for now
+  },
+  {
     label: 'Ofertas',
     href: '/offerings',
     iconKey: 'Offerings',
