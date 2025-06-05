@@ -12,10 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit3, ShieldAlert, Users } from "lucide-react"; // Added Users for new link
+import { Edit3, ShieldAlert, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import type { CellGroup } from "@/types"; // Import CellGroup
+import type { CellGroup } from "@/types";
 
 const myCellGroupSchema = z.object({
   name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres." }),
@@ -23,7 +23,6 @@ const myCellGroupSchema = z.object({
   meetingDay: z.string({ required_error: "Selecione o dia da reunião." }),
   meetingTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Horário inválido (HH:MM)." }),
   geracao: z.string().optional(),
-  // liderNome não é editável aqui diretamente, é o próprio usuário.
 });
 
 type MyCellGroupFormValues = z.infer<typeof myCellGroupSchema>;
@@ -35,17 +34,20 @@ const daysOfWeek = [
 export default function MyCellPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, mockCellGroups, updateMockCellGroup } = useAuth(); // Adicionado mockCellGroups e updateMockCellGroup
 
-  // Mock data da célula do líder - em um app real, viria do backend
-  const [myCellData, setMyCellData] = useState<Partial<CellGroup>>({ // Use Partial<CellGroup>
-    id: user?.cellGroupId,
-    name: user?.cellGroupName || "Minha Célula",
-    address: "Rua da Fé, 123, Bairro Esperança",
-    meetingDay: "Quarta-feira",
-    meetingTime: "19:30",
-    liderNome: user?.name, // O nome do líder é o nome do usuário logado
-    geracao: "G1 (Exemplo)", // Exemplo de geração
+  const [myCellData, setMyCellData] = useState<Partial<CellGroup>>(() => {
+    if (user?.cellGroupId) {
+      return mockCellGroups.find(cg => cg.id === user.cellGroupId) || {};
+    }
+    return {
+      name: user?.cellGroupName || `Célula de ${user?.name || 'Líder'}`,
+      liderNome: user?.name,
+      address: "Endereço Padrão",
+      meetingDay: "Quarta-feira",
+      meetingTime: "19:30",
+      geracao: "G1 (Exemplo)",
+    };
   });
 
   const form = useForm<MyCellGroupFormValues>({
@@ -60,50 +62,79 @@ export default function MyCellPage() {
   });
   
   useEffect(() => {
-    // Simular busca de dados da célula do líder se o user.cellGroupId existir
     if (user?.cellGroupId) {
-        // Em um app real, você buscaria os dados da célula `user.cellGroupId` aqui
-        // Por agora, vamos apenas atualizar com os dados do usuário e um mock.
-        const mockFetchedCell: Partial<CellGroup> = {
-            id: user.cellGroupId,
-            name: user.cellGroupName || "Célula do Líder",
-            address: "Endereço Mock da Célula",
-            meetingDay: "Segunda-feira",
-            meetingTime: "20:00",
-            liderNome: user.name,
-            geracao: "Geração X",
-        };
-        setMyCellData(mockFetchedCell);
-        form.reset({
-            name: mockFetchedCell.name,
-            address: mockFetchedCell.address,
-            meetingDay: mockFetchedCell.meetingDay,
-            meetingTime: mockFetchedCell.meetingTime,
-            geracao: mockFetchedCell.geracao,
-        });
+        const currentCell = mockCellGroups.find(cg => cg.id === user.cellGroupId);
+        if (currentCell) {
+            setMyCellData(currentCell);
+            form.reset({
+                name: currentCell.name,
+                address: currentCell.address,
+                meetingDay: currentCell.meetingDay,
+                meetingTime: currentCell.meetingTime,
+                geracao: currentCell.geracao,
+            });
+        } else {
+             // Caso célula do user não seja encontrada nos mocks (improvável com dados atuais, mas bom para robustez)
+            const defaultLeaderCellName = user?.name ? `Célula de ${user.name}` : "Minha Célula";
+            const fallbackData = {
+                id: user.cellGroupId,
+                name: defaultLeaderCellName,
+                address: "Rua da Fé, 123, Bairro Esperança",
+                meetingDay: "Quarta-feira",
+                meetingTime: "19:30",
+                liderNome: user.name,
+                geracao: "G1 (Padrão)",
+            };
+            setMyCellData(fallbackData);
+            form.reset({
+                name: fallbackData.name,
+                address: fallbackData.address,
+                meetingDay: fallbackData.meetingDay,
+                meetingTime: fallbackData.meetingTime,
+                geracao: fallbackData.geracao,
+            });
+        }
     } else {
-        // Reset para valores padrão se não houver célula associada
         const defaultLeaderCellName = user?.name ? `Célula de ${user.name}` : "Minha Célula";
-         setMyCellData(prev => ({
-            ...prev,
+         const initialData = {
             name: defaultLeaderCellName,
-            liderNome: user?.name
-         }));
+            liderNome: user?.name,
+            address: "Rua da Fé, 123, Bairro Esperança", 
+            meetingDay: "Quarta-feira", 
+            meetingTime: "19:30", 
+            geracao: "G1 (Exemplo)", 
+         };
+         setMyCellData(initialData);
          form.reset({
-            name: defaultLeaderCellName,
-            address: "Rua da Fé, 123, Bairro Esperança", // Mock default
-            meetingDay: "Quarta-feira", // Mock default
-            meetingTime: "19:30", // Mock default
-            geracao: "G1 (Exemplo)", // Mock default
+            name: initialData.name,
+            address: initialData.address,
+            meetingDay: initialData.meetingDay,
+            meetingTime: initialData.meetingTime,
+            geracao: initialData.geracao,
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, form.reset]);
+  }, [user, mockCellGroups]); // Adicionado mockCellGroups como dependência
 
 
   function onSubmitEdit(values: MyCellGroupFormValues) {
-    console.log("Dados atualizados da Célula:", values);
-    setMyCellData(prev => ({...prev, ...values, liderNome: user?.name})); // Atualiza mock local
+    if (!user?.cellGroupId) {
+      toast({ title: "Erro", description: "Nenhuma célula associada para atualizar.", variant: "destructive" });
+      return;
+    }
+    const updatedCell: CellGroup = {
+      ...myCellData,
+      ...values,
+      id: user.cellGroupId, // Garante que o ID está correto
+      liderNome: user.name, // O líder é o usuário logado
+      name: values.name, // Garantir que o nome seja atualizado
+      address: values.address,
+      meetingDay: values.meetingDay,
+      meetingTime: values.meetingTime,
+      geracao: values.geracao,
+    };
+    updateMockCellGroup(updatedCell); // Atualiza no contexto (simulação)
+    setMyCellData(updatedCell); // Atualiza estado local para re-renderização imediata
     toast({
       title: "Sucesso!",
       description: "Dados da sua célula atualizados.",
@@ -121,7 +152,7 @@ export default function MyCellPage() {
     );
   }
   
-  if (!user.cellGroupId || !user.cellGroupName) {
+  if (!user.cellGroupId) { // Não precisa checar cellGroupName aqui, pois o nome da célula vem de myCellData
      return (
       <div className="flex flex-col items-center justify-center h-full">
         <ShieldAlert className="w-16 h-16 text-yellow-500 mb-4" />
@@ -185,7 +216,7 @@ export default function MyCellPage() {
         <CardHeader>
           <CardTitle className="font-headline">Vidas da Célula</CardTitle>
           <CardDescription className="font-body">
-            Visualize as vidas associadas à sua célula. (Redireciona para Vidas com filtro aplicado)
+            Visualize as vidas associadas à sua célula.
           </CardDescription>
         </CardHeader>
         <CardContent>
