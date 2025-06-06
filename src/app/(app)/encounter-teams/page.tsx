@@ -18,7 +18,7 @@ const mockEncounterTeams: EncounterTeam[] = [
 export default function EncounterTeamsPage() {
   const router = useRouter();
 
-  const encounterTeams = mockEncounterTeams;
+  const encounterTeams = mockEncounterTeams; // In a real app, this would come from a context or API call
 
   return (
     <div className="space-y-6">
@@ -76,4 +76,3 @@ export default function EncounterTeamsPage() {
     </div>
   );
 }
-

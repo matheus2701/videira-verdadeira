@@ -35,7 +35,7 @@ type TeamMemberFormValues = z.infer<typeof teamMemberFormSchema>;
 export default function NewEncounterTeamMemberPage() {
   const router = useRouter();
   const params = useParams();
-  const teamId = params.teamId as string;
+  const teamId = params.teamId as string; // teamId will be used to associate member with the team
   const { toast } = useToast();
 
   const form = useForm<TeamMemberFormValues>({
@@ -49,19 +49,21 @@ export default function NewEncounterTeamMemberPage() {
   });
 
   function onSubmit(data: TeamMemberFormValues) {
+    // Simulate saving data
     const newMemberData: Partial<EncounterTeamMember> = {
       id: `member-${Date.now()}`, // Mock ID
       ...data,
-      encounterTeamId: teamId, 
+      encounterTeamId: teamId, // Associate with the current team
       addedAt: new Date(),
     }
     console.log("Dados do Novo Membro da Equipe de Encontro:", newMemberData);
+    // In a real app, save this: addTeamMember(teamId, newMemberData);
 
     toast({
       title: "Membro Adicionado (Simulação)",
       description: `O membro "${data.name}" foi adicionado à equipe com a função ${data.teamRole}.`,
     });
-    router.push(`/encounter-teams/${teamId}`); 
+    router.push(`/encounter-teams/${teamId}`); // Go back to the team details page
   }
 
   return (

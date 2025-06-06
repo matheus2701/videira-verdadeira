@@ -4,7 +4,7 @@ import {
   LayoutDashboard,
   Users, // Usado para "Vidas"
   HandCoins,
-  Home, // Alterado de ShieldCheck para Home
+  Home, // Usado para "PeaceHouses"
   ClipboardCheck,
   BarChartBig,
   LayoutGrid, // Usado para "Grupos de Células"
@@ -27,7 +27,7 @@ export const Icons = {
   Reports: BarChartBig,
   Settings: Settings,
   Logout: LogOut,
-  EncounterTeams: UsersRound,
+  EncounterTeams: UsersRound, // Adicionado ícone para Equipes de Encontro
 };
 
 export type IconKey = keyof typeof Icons;

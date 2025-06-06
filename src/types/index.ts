@@ -75,7 +75,7 @@ export interface EncounterTeam {
 
 export interface EncounterTeamMember {
   id: string;
-  encounterTeamId: string;
+  encounterTeamId: string; // Links to EncounterTeam
   name: string;
   contact?: string;
   teamRole: EncounterTeamRole;

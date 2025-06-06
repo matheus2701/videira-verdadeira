@@ -89,6 +89,7 @@ export default function EncounterTeamDetailsPage() {
     );
   }
 
+  // Group members by role
   const membersByRole: Record<EncounterTeamRole, EncounterTeamMember[]> =
     encounterTeamRoles.reduce((acc, role) => {
       acc[role] = members.filter(member => member.teamRole === role);
@@ -132,9 +133,9 @@ export default function EncounterTeamDetailsPage() {
 
       {encounterTeamRoles.map(role => {
         const roleMembers = membersByRole[role];
-        if (!roleMembers || roleMembers.length === 0) return null;
+        if (!roleMembers || roleMembers.length === 0) return null; // Don't render section if no members for this role
 
-        const IconComponent = roleIconsRecord[role] || User;
+        const IconComponent = roleIconsRecord[role] || User; // Default to User icon if specific one not found
 
         return (
           <section key={role} className="space-y-4">
@@ -168,4 +169,3 @@ export default function EncounterTeamDetailsPage() {
     </div>
   );
 }
-

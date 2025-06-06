@@ -44,12 +44,15 @@ export default function NewEncounterTeamPage() {
   });
 
   function onSubmit(data: EncounterTeamFormValues) {
+    // Simulate saving data
     const newTeamData: Partial<EncounterTeam> = {
-      id: `team-${Date.now()}`, 
+      id: `team-${Date.now()}`, // Mock ID
       ...data,
       createdAt: new Date(),
     };
     console.log("Dados da Nova Equipe de Encontro:", newTeamData);
+    // In a real app, you'd save this to a backend or context
+    // e.g., addEncounterTeam(newTeamData);
 
     toast({
       title: "Equipe de Encontro Salva (Simulação)",
@@ -131,4 +134,3 @@ export default function NewEncounterTeamPage() {
     </div>
   );
 }
-
