@@ -23,34 +23,17 @@ const vidaSchema = z.object({
   nomeCompleto: z.string().min(3, { message: "Nome completo deve ter pelo menos 3 caracteres." }),
   dataNascimento: z.date({ required_error: "Data de nascimento é obrigatória." }),
   telefone: z.string().optional().refine(val => !val || val.length === 0 || val.length >= 10, { message: "Telefone inválido." }),
-  idCelula: z.string({ required_error: "Célula é obrigatória." }), // Será um select no futuro
-  // nomeCelula é para exibição, geracaoCelula virá da célula associada
+  idCelula: z.string({ required_error: "Célula é obrigatória." }),
   status: z.enum(['membro', 'lider_em_treinamento', 'lider_ativo'], { required_error: "Status é obrigatório." }),
 });
 
 type VidaFormValues = z.infer<typeof vidaSchema>;
 
-// Mock data inicial para Vidas
-const initialMockVidas: Vida[] = [
-  { id: 'vida1', nomeCompleto: 'Ana Silva', dataNascimento: new Date(1990, 5, 15), telefone: '(11) 99999-1111', idCelula: 'celula-alpha-123', nomeCelula: 'Discípulos de Cristo', geracaoCelula: 'G1', status: 'lider_ativo', createdAt: new Date() },
-  { id: 'vida2', nomeCompleto: 'Bruno Costa', dataNascimento: new Date(1985, 8, 22), idCelula: 'celula-beta-456', nomeCelula: 'Leões de Judá', geracaoCelula: 'G2', status: 'membro', createdAt: new Date() },
-  { id: 'vida3', nomeCompleto: 'Carla Dias', dataNascimento: new Date(2000, 1, 10), telefone: '(21) 98888-2222', idCelula: 'celula-alpha-123', nomeCelula: 'Discípulos de Cristo', geracaoCelula: 'G1', status: 'lider_em_treinamento', createdAt: new Date() },
-];
-
-// Mock data para Células (simples, para popular o select no form de Vida)
-const mockCellGroupsData = [
-    { id: 'celula-alpha-123', name: 'Discípulos de Cristo', geracao: 'G1' },
-    { id: 'celula-beta-456', name: 'Leões de Judá', geracao: 'G2' },
-    { id: 'celula-gamma-789', name: 'Nova Geração', geracao: 'G1' },
-];
-
-
 export default function VidasPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVida, setEditingVida] = useState<Vida | null>(null);
-  const [vidas, setVidas] = useState<Vida[]>(initialMockVidas);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, mockVidas, mockCellGroups, addMockVida, updateMockVida } = useAuth();
 
   const form = useForm<VidaFormValues>({
     resolver: zodResolver(vidaSchema),
@@ -75,7 +58,6 @@ export default function VidasPage() {
 
   useEffect(() => {
     if (editingVida) {
-      const cell = mockCellGroupsData.find(c => c.id === editingVida.idCelula);
       form.reset({
         nomeCompleto: editingVida.nomeCompleto,
         dataNascimento: new Date(editingVida.dataNascimento),
@@ -98,27 +80,34 @@ export default function VidasPage() {
 
 
   function onSubmit(values: VidaFormValues) {
-    const cell = mockCellGroupsData.find(c => c.id === values.idCelula);
-    const vidaData: Omit<Vida, 'id' | 'createdAt'> & Partial<Pick<Vida, 'id' | 'createdAt'>> = {
-      ...values,
-      nomeCelula: cell?.name,
-      geracaoCelula: cell?.geracao,
-    };
-
+    const cell = mockCellGroups.find(c => c.id === values.idCelula);
+    
     if (editingVida) {
-      const updatedVida = { ...editingVida, ...vidaData, nomeCompleto: values.nomeCompleto, dataNascimento: values.dataNascimento, telefone: values.telefone, idCelula: values.idCelula, status: values.status as VidaStatus };
-      setVidas(vidas.map(v => v.id === editingVida.id ? updatedVida : v));
+      const updatedVida: Vida = { 
+        ...editingVida, 
+        ...values,
+        nomeCompleto: values.nomeCompleto, // Explicitly map from form values
+        dataNascimento: values.dataNascimento,
+        telefone: values.telefone,
+        idCelula: values.idCelula,
+        status: values.status as VidaStatus,
+        nomeCelula: cell?.name,
+        geracaoCelula: cell?.geracao,
+      };
+      updateMockVida(updatedVida);
       toast({ title: "Sucesso!", description: "Vida atualizada com sucesso." });
     } else {
       const newVida: Vida = {
         id: `vida-${Date.now()}`,
-        ...vidaData,
-        nomeCompleto: values.nomeCompleto,
+        ...values,
+        nomeCompleto: values.nomeCompleto, // Explicitly map
         dataNascimento: values.dataNascimento,
         status: values.status as VidaStatus,
+        nomeCelula: cell?.name,
+        geracaoCelula: cell?.geracao,
         createdAt: new Date()
       };
-      setVidas(prev => [newVida, ...prev]);
+      addMockVida(newVida);
       toast({ title: "Sucesso!", description: "Vida adicionada com sucesso." });
     }
     
@@ -140,8 +129,8 @@ export default function VidasPage() {
   };
 
   const filteredVidas = user?.role === 'lider_de_celula' && user.cellGroupId 
-    ? vidas.filter(v => v.idCelula === user.cellGroupId)
-    : vidas;
+    ? mockVidas.filter(v => v.idCelula === user.cellGroupId)
+    : mockVidas;
 
   return (
     <div className="space-y-6">
@@ -211,7 +200,7 @@ export default function VidasPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {mockCellGroupsData.map(cell => (
+                          {mockCellGroups.filter(cell => cell && cell.id && cell.id !== "").map(cell => (
                             <SelectItem key={cell.id} value={cell.id}>{cell.name} (Geração: {cell.geracao || 'N/A'})</SelectItem>
                           ))}
                         </SelectContent>
@@ -289,12 +278,12 @@ export default function VidasPage() {
                             vida.status === 'lider_em_treinamento' ? 'bg-yellow-100 text-yellow-700' :
                             'bg-blue-100 text-blue-700'
                         }`}>
-                            {vida.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {vida.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                         </span>
                     </TableCell>
                     <TableCell>{vida.telefone || "-"}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handlePromote(vida)}>
+                      <Button variant="outline" size="sm" onClick={() => handlePromote(vida)} disabled={user?.role === 'lider_de_celula'}>
                         <ArrowUpCircle className="mr-1 h-3 w-3" /> Liderança
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(vida)}>
@@ -305,6 +294,7 @@ export default function VidasPage() {
                 ))}
               </TableBody>
                <TableCaption>
+                Exibindo {filteredVidas.length} de {mockVidas.length} vidas.
                 {user?.role === 'lider_de_celula' && (!user.cellGroupName || !user.cellGroupId) && 
                   <p className="text-destructive text-sm mt-2">Líder não associado a uma célula específica.</p>
                 }
@@ -316,3 +306,4 @@ export default function VidasPage() {
     </div>
   );
 }
+
