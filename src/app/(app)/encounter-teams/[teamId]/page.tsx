@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ArrowLeft, PlusCircle, User, UsersRound, ShieldCheck, Utensils, HelpingHand, UserCog, CalendarDays, Home } from "lucide-react"; // Added Home
+import { ArrowLeft, PlusCircle, User, UsersRound, ShieldCheck, Utensils, HelpingHand, UserCog, CalendarDays, Home } from "lucide-react"; 
 import type { EncounterTeam, EncounterTeamMember, EncounterTeamRole } from "@/types";
 import { encounterTeamRoles } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,9 +48,6 @@ export default function EncounterTeamDetailsPage() {
       setLoading(true);
       // Simulate API call
       setTimeout(() => {
-        // In a real app, new teams added via the form would be in a central store (like AuthContext or fetched from backend)
-        // For this mock, we only have the initial mockEncounterTeams.
-        // A more robust mock would merge or fetch from where new teams are "saved".
         const foundTeam = mockEncounterTeams.find(t => t.id === teamId); 
         const teamMembers = mockTeamMembers.filter(m => m.encounterTeamId === teamId);
         setTeam(foundTeam || null);
@@ -117,8 +114,8 @@ export default function EncounterTeamDetailsPage() {
             )}
             {team.organizingCellGroupName && (
                 <span className="flex items-center gap-2">
-                    <Home className="w-4 h-4" />
-                    Célula Organizadora: {team.organizingCellGroupName}
+                    <Home className="w-4 h-4" /> {/* Can use LinkIcon or other suitable icon */}
+                    Célula Vinculada: {team.organizingCellGroupName}
                 </span>
             )}
         </div>

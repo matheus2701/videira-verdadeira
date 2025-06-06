@@ -44,7 +44,7 @@ export default function NewEncounterTeamPage() {
       name: "",
       description: "",
       eventDate: undefined,
-      organizingCellGroupId: undefined, 
+      organizingCellGroupId: "_none_", 
     },
   });
 
@@ -69,7 +69,7 @@ export default function NewEncounterTeamPage() {
 
     toast({
       title: "Equipe de Encontro Salva (Simulação)",
-      description: `A equipe "${data.name}" ${selectedCell ? `organizada pela célula ${selectedCell.name}` : ''} foi registrada no console.`,
+      description: `A equipe "${data.name}" ${selectedCell ? `vinculada à célula ${selectedCell.name}` : ''} foi registrada no console.`,
     });
     router.push("/encounter-teams");
   }
@@ -108,20 +108,20 @@ export default function NewEncounterTeamPage() {
                 name="organizingCellGroupId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Célula Organizadora (Opcional)</FormLabel>
+                    <FormLabel>Célula Vinculada ao Encontro (Opcional)</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      value={field.value || "_none_"} // Ensure controlled component has a defined value
+                      value={field.value || "_none_"} 
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione a célula organizadora" />
+                          <SelectValue placeholder="Selecione a célula vinculada" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="_none_">Nenhuma</SelectItem>
                         {mockCellGroups
-                          .filter(cell => cell && cell.id && cell.id !== "") // Defensive filter
+                          .filter(cell => cell && cell.id && cell.id !== "") 
                           .map((cell: CellGroup) => (
                           <SelectItem key={cell.id} value={cell.id}>
                             {cell.name} (Geração: {cell.geracao || 'N/A'})

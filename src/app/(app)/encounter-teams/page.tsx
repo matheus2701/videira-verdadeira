@@ -4,12 +4,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, UsersRound, CalendarDays, Home } from 'lucide-react'; // Added Home
+import { PlusCircle, UsersRound, CalendarDays, Home } from 'lucide-react'; 
 import type { EncounterTeam } from '@/types';
 import { useRouter } from 'next/navigation';
 
 // Mock data - replace with actual data fetching
-// Note: Teams created via the form are only logged and won't appear here unless this mock is updated or a state management solution is used.
 const mockEncounterTeams: EncounterTeam[] = [
   { id: "team1", name: "Encontro de Paz - Julho 2024", eventDate: new Date("2024-07-20"), createdAt: new Date(), description: "Primeiro encontro do segundo semestre.", organizingCellGroupId: "celula-discipulos-001", organizingCellGroupName: "Discípulos de Cristo" },
   { id: "team2", name: "Encontro de Paz - Setembro 2024", eventDate: new Date("2024-09-15"), createdAt: new Date(), description: "Foco em novas famílias." },
@@ -19,7 +18,6 @@ const mockEncounterTeams: EncounterTeam[] = [
 export default function EncounterTeamsPage() {
   const router = useRouter();
 
-  // In a real app, this would come from a context or API call, and would include newly created teams.
   const encounterTeams = mockEncounterTeams; 
 
   return (
@@ -68,7 +66,7 @@ export default function EncounterTeamsPage() {
                 {team.organizingCellGroupName && (
                    <CardDescription className="flex items-center gap-1.5 font-body text-xs mt-1">
                         <Home className="w-3.5 h-3.5" />
-                        Org: {team.organizingCellGroupName}
+                        Célula: {team.organizingCellGroupName}
                     </CardDescription>
                 )}
               </CardHeader>
