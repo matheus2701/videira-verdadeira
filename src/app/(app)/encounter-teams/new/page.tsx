@@ -36,7 +36,7 @@ type EncounterTeamFormValues = z.infer<typeof encounterTeamFormSchema>;
 export default function NewEncounterTeamPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { mockCellGroups } = useAuth(); // Get cell groups for the Select
+  const { mockCellGroups } = useAuth(); 
 
   const form = useForm<EncounterTeamFormValues>({
     resolver: zodResolver(encounterTeamFormSchema),
@@ -44,25 +44,27 @@ export default function NewEncounterTeamPage() {
       name: "",
       description: "",
       eventDate: undefined,
-      organizingCellGroupId: undefined,
+      organizingCellGroupId: undefined, 
     },
   });
 
   function onSubmit(data: EncounterTeamFormValues) {
-    const selectedCell = mockCellGroups.find(cg => cg.id === data.organizingCellGroupId);
+    const selectedCell = data.organizingCellGroupId === "_none_" 
+      ? undefined 
+      : mockCellGroups.find(cg => cg.id === data.organizingCellGroupId);
 
     const newTeamData: Partial<EncounterTeam> = {
-      id: `team-${Date.now()}`, // Mock ID
+      id: `team-${Date.now()}`, 
       name: data.name,
       eventDate: data.eventDate,
       description: data.description,
-      organizingCellGroupId: data.organizingCellGroupId,
+      organizingCellGroupId: data.organizingCellGroupId === "_none_" ? undefined : data.organizingCellGroupId,
       organizingCellGroupName: selectedCell?.name,
       createdAt: new Date(),
     };
     console.log("Dados da Nova Equipe de Encontro:", newTeamData);
     // In a real app, you'd save this to a backend or context
-    // e.g., addEncounterTeam(newTeamData);
+    // e.g., addEncounterTeam(newTeamData); 
     // For now, new data is only logged and won't persist in the mock list on the main page unless that's also updated.
 
     toast({
@@ -107,15 +109,20 @@ export default function NewEncounterTeamPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Célula Organizadora (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || "_none_"} // Ensure controlled component has a defined value
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione a célula organizadora" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhuma</SelectItem>
-                        {mockCellGroups.map((cell: CellGroup) => (
+                        <SelectItem value="_none_">Nenhuma</SelectItem>
+                        {mockCellGroups
+                          .filter(cell => cell && cell.id && cell.id !== "") // Defensive filter
+                          .map((cell: CellGroup) => (
                           <SelectItem key={cell.id} value={cell.id}>
                             {cell.name} (Geração: {cell.geracao || 'N/A'})
                           </SelectItem>
