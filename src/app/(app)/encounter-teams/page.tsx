@@ -24,13 +24,13 @@ export default function EncounterTeamsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-headline">Equipes de Encontro</h1>
+          <h1 className="text-3xl font-headline">Equipes do Encontro da Paz</h1>
           <p className="text-muted-foreground font-body">Gerencie as equipes para os Encontros de Paz e outros eventos.</p>
         </div>
         <Button asChild>
           <Link href="/encounter-teams/new">
             <PlusCircle className="mr-2 h-5 w-5" />
-            Nova Equipe de Encontro
+            Nova Equipe do Encontro da Paz
           </Link>
         </Button>
       </div>
@@ -41,7 +41,7 @@ export default function EncounterTeamsPage() {
             <CardTitle className="font-headline">Nenhuma Equipe Cadastrada</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-body">Ainda não há equipes de encontro cadastradas. Clique em "Nova Equipe de Encontro" para adicionar a primeira.</p>
+            <p className="font-body">Ainda não há equipes de encontro cadastradas. Clique em "Nova Equipe do Encontro da Paz" para adicionar a primeira.</p>
           </CardContent>
         </Card>
       ) : (
@@ -76,3 +76,4 @@ export default function EncounterTeamsPage() {
     </div>
   );
 }
+

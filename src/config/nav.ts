@@ -36,7 +36,7 @@ export const mainNav: NavItemConfig[] = [
     roles: ['missionario'], // Inicialmente para missionários
   },
   {
-    label: 'Equipes de Encontro',
+    label: 'Equipes do Encontro da Paz',
     href: '/encounter-teams',
     iconKey: 'EncounterTeams',
     roles: ['missionario'],
@@ -81,3 +81,4 @@ export const userNav: NavItemConfig[] = [
     roles: ['missionario', 'lider_de_celula'],
   },
 ];
+

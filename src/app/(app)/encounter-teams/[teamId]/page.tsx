@@ -81,7 +81,7 @@ export default function EncounterTeamDetailsPage() {
           <CardContent>
             <p className="font-body">A equipe que você está procurando não existe ou foi removida.</p>
             <Button onClick={() => router.push('/encounter-teams')} className="mt-4">
-              Voltar para lista de equipes
+              Voltar para lista de equipes do Encontro da Paz
             </Button>
           </CardContent>
         </Card>
@@ -101,7 +101,7 @@ export default function EncounterTeamDetailsPage() {
       <div>
         <Button variant="outline" size="sm" onClick={() => router.push('/encounter-teams')} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para Equipes
+          Voltar para Equipes do Encontro da Paz
         </Button>
         <h1 className="text-3xl font-headline">{team.name}</h1>
         {team.eventDate && (
@@ -168,3 +168,4 @@ export default function EncounterTeamDetailsPage() {
     </div>
   );
 }
+

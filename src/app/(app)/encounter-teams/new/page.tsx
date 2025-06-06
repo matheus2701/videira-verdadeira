@@ -61,7 +61,7 @@ export default function NewEncounterTeamPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <CardTitle className="text-2xl font-headline">Nova Equipe de Encontro</CardTitle>
+        <CardTitle className="text-2xl font-headline">Nova Equipe do Encontro da Paz</CardTitle>
         <Button variant="outline" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
@@ -131,3 +131,4 @@ export default function NewEncounterTeamPage() {
     </div>
   );
 }
+
