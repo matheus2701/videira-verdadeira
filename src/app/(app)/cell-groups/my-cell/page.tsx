@@ -223,11 +223,11 @@ export default function MyCellPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="font-headline text-3xl font-semibold">Gerenciar Minha Célula: {myCellData.name}</h1>
+        <h1 className="font-headline text-2xl sm:text-3xl font-semibold">Gerenciar Minha Célula: {myCellData.name}</h1>
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline">
-              <Edit3 className="mr-2 h-4 w-4" /> Editar Dados da Célula
+            <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+              <Edit3 className="mr-2 h-4 w-4" /> Editar Dados
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[480px]">
@@ -243,7 +243,7 @@ export default function MyCellPage() {
                 <FormItem><FormLabel>Nome do Líder</FormLabel><Input value={myCellData.liderNome || user?.name || ''} readOnly disabled /></FormItem>
                 <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Endereço</FormLabel><FormControl><Input placeholder="Ex: Rua Exemplo, 123, Bairro" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="geracao" render={({ field }) => ( <FormItem><FormLabel>Geração da Célula</FormLabel><FormControl><Input placeholder="Ex: G1, Conquistadores" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="meetingDay" render={({ field }) => ( <FormItem><FormLabel>Dia da Reunião</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione o dia" /></SelectTrigger></FormControl><SelectContent>{daysOfWeek.map(day => (<SelectItem key={day} value={day}>{day}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="meetingTime" render={({ field }) => ( <FormItem><FormLabel>Horário (HH:MM)</FormLabel><FormControl><Input placeholder="Ex: 19:30" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
@@ -259,7 +259,7 @@ export default function MyCellPage() {
       
       <Card>
         <CardHeader><CardTitle className="font-headline">Detalhes da Célula</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 text-sm sm:text-base">
             <p><strong className="font-medium">Nome:</strong> {myCellData.name}</p>
             <p><strong className="font-medium">Líder:</strong> {myCellData.liderNome || user?.name}</p>
             <p><strong className="font-medium">Endereço:</strong> {myCellData.address}</p>
@@ -273,8 +273,8 @@ export default function MyCellPage() {
       </Card>
 
        <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-            <div>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+            <div className="mb-2 sm:mb-0">
                 <CardTitle className="font-headline">Atualização Semanal da Célula</CardTitle>
                 <CardDescription className="font-body">
                     Registre o status da reunião da sua célula para esta semana.
@@ -282,7 +282,7 @@ export default function MyCellPage() {
             </div>
             <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="secondary">
+                    <Button variant="secondary" size="sm" className="text-xs sm:text-sm self-start sm:self-center">
                         <CalendarCheck2 className="mr-2 h-4 w-4" /> Registrar Status
                     </Button>
                 </DialogTrigger>
