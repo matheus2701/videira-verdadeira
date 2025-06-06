@@ -6,14 +6,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ArrowLeft, PlusCircle, User, UsersRound, ShieldCheck, Utensils, HelpingHand, UserCog, CalendarDays } from "lucide-react";
+import { ArrowLeft, PlusCircle, User, UsersRound, ShieldCheck, Utensils, HelpingHand, UserCog, CalendarDays, Home } from "lucide-react"; // Added Home
 import type { EncounterTeam, EncounterTeamMember, EncounterTeamRole } from "@/types";
 import { encounterTeamRoles } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Mock data - replace with Firebase fetching
 const mockEncounterTeams: EncounterTeam[] = [
-  { id: "team1", name: "Encontro de Paz - Julho 2024", eventDate: new Date("2024-07-20T10:00:00Z"), createdAt: new Date(), description: "Primeiro encontro do segundo semestre." },
+  { id: "team1", name: "Encontro de Paz - Julho 2024", eventDate: new Date("2024-07-20T10:00:00Z"), createdAt: new Date(), description: "Primeiro encontro do segundo semestre.", organizingCellGroupId: "celula-discipulos-001", organizingCellGroupName: "Discípulos de Cristo" },
   { id: "team2", name: "Encontro de Paz - Setembro 2024", eventDate: new Date("2024-09-15T10:00:00Z"), createdAt: new Date(), description: "Foco em novas famílias." },
 ];
 
@@ -48,7 +48,10 @@ export default function EncounterTeamDetailsPage() {
       setLoading(true);
       // Simulate API call
       setTimeout(() => {
-        const foundTeam = mockEncounterTeams.find(t => t.id === teamId);
+        // In a real app, new teams added via the form would be in a central store (like AuthContext or fetched from backend)
+        // For this mock, we only have the initial mockEncounterTeams.
+        // A more robust mock would merge or fetch from where new teams are "saved".
+        const foundTeam = mockEncounterTeams.find(t => t.id === teamId); 
         const teamMembers = mockTeamMembers.filter(m => m.encounterTeamId === teamId);
         setTeam(foundTeam || null);
         setMembers(teamMembers);
@@ -105,13 +108,21 @@ export default function EncounterTeamDetailsPage() {
           Voltar para Equipes do Encontro da Paz
         </Button>
         <h1 className="text-3xl font-headline">{team.name}</h1>
-        {team.eventDate && (
-          <p className="text-muted-foreground font-body flex items-center gap-2 mt-1">
-            <CalendarDays className="w-4 h-4"/>
-            Data do Evento: {new Date(team.eventDate).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        )}
-        {team.description && <p className="text-sm text-muted-foreground mt-1 font-body">{team.description}</p>}
+        <div className="text-muted-foreground font-body flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1 mt-1">
+            {team.eventDate && (
+            <span className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4"/>
+                Data: {new Date(team.eventDate).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+            )}
+            {team.organizingCellGroupName && (
+                <span className="flex items-center gap-2">
+                    <Home className="w-4 h-4" />
+                    Célula Organizadora: {team.organizingCellGroupName}
+                </span>
+            )}
+        </div>
+        {team.description && <p className="text-sm text-muted-foreground mt-2 font-body">{team.description}</p>}
       </div>
 
       <div className="flex justify-between items-center">
@@ -133,9 +144,9 @@ export default function EncounterTeamDetailsPage() {
 
       {encounterTeamRoles.map(role => {
         const roleMembers = membersByRole[role];
-        if (!roleMembers || roleMembers.length === 0) return null; // Don't render section if no members for this role
+        if (!roleMembers || roleMembers.length === 0) return null; 
 
-        const IconComponent = roleIconsRecord[role] || User; // Default to User icon if specific one not found
+        const IconComponent = roleIconsRecord[role] || User;
 
         return (
           <section key={role} className="space-y-4">

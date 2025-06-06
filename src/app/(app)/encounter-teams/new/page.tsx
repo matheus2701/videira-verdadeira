@@ -17,15 +17,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatePicker } from "@/components/ui/date-picker"; // Using existing DatePicker
+import { DatePicker } from "@/components/ui/date-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Save } from "lucide-react";
-import type { EncounterTeam } from "@/types";
+import type { EncounterTeam, CellGroup } from "@/types";
 
 const encounterTeamFormSchema = z.object({
   name: z.string().min(3, { message: "O nome da equipe deve ter pelo menos 3 caracteres." }),
   eventDate: z.date().optional(),
   description: z.string().optional(),
+  organizingCellGroupId: z.string().optional(),
 });
 
 type EncounterTeamFormValues = z.infer<typeof encounterTeamFormSchema>;
@@ -33,6 +36,7 @@ type EncounterTeamFormValues = z.infer<typeof encounterTeamFormSchema>;
 export default function NewEncounterTeamPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { mockCellGroups } = useAuth(); // Get cell groups for the Select
 
   const form = useForm<EncounterTeamFormValues>({
     resolver: zodResolver(encounterTeamFormSchema),
@@ -40,23 +44,30 @@ export default function NewEncounterTeamPage() {
       name: "",
       description: "",
       eventDate: undefined,
+      organizingCellGroupId: undefined,
     },
   });
 
   function onSubmit(data: EncounterTeamFormValues) {
-    // Simulate saving data
+    const selectedCell = mockCellGroups.find(cg => cg.id === data.organizingCellGroupId);
+
     const newTeamData: Partial<EncounterTeam> = {
       id: `team-${Date.now()}`, // Mock ID
-      ...data,
+      name: data.name,
+      eventDate: data.eventDate,
+      description: data.description,
+      organizingCellGroupId: data.organizingCellGroupId,
+      organizingCellGroupName: selectedCell?.name,
       createdAt: new Date(),
     };
     console.log("Dados da Nova Equipe de Encontro:", newTeamData);
     // In a real app, you'd save this to a backend or context
     // e.g., addEncounterTeam(newTeamData);
+    // For now, new data is only logged and won't persist in the mock list on the main page unless that's also updated.
 
     toast({
       title: "Equipe de Encontro Salva (Simulação)",
-      description: `A equipe "${data.name}" foi registrada no console.`,
+      description: `A equipe "${data.name}" ${selectedCell ? `organizada pela célula ${selectedCell.name}` : ''} foi registrada no console.`,
     });
     router.push("/encounter-teams");
   }
@@ -86,6 +97,31 @@ export default function NewEncounterTeamPage() {
                     <FormControl>
                       <Input placeholder="Ex: Encontro de Paz - Agosto 2024" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="organizingCellGroupId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Célula Organizadora (Opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a célula organizadora" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Nenhuma</SelectItem>
+                        {mockCellGroups.map((cell: CellGroup) => (
+                          <SelectItem key={cell.id} value={cell.id}>
+                            {cell.name} (Geração: {cell.geracao || 'N/A'})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

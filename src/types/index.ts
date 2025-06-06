@@ -71,6 +71,8 @@ export interface EncounterTeam {
   eventDate?: Date;
   description?: string;
   createdAt: Date;
+  organizingCellGroupId?: string; // ID da célula organizadora
+  organizingCellGroupName?: string; // Nome da célula organizadora para exibição
 }
 
 export interface EncounterTeamMember {

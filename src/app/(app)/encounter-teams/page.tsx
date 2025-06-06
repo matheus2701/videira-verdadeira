@@ -4,13 +4,14 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, UsersRound, CalendarDays } from 'lucide-react';
+import { PlusCircle, UsersRound, CalendarDays, Home } from 'lucide-react'; // Added Home
 import type { EncounterTeam } from '@/types';
 import { useRouter } from 'next/navigation';
 
 // Mock data - replace with actual data fetching
+// Note: Teams created via the form are only logged and won't appear here unless this mock is updated or a state management solution is used.
 const mockEncounterTeams: EncounterTeam[] = [
-  { id: "team1", name: "Encontro de Paz - Julho 2024", eventDate: new Date("2024-07-20"), createdAt: new Date(), description: "Primeiro encontro do segundo semestre." },
+  { id: "team1", name: "Encontro de Paz - Julho 2024", eventDate: new Date("2024-07-20"), createdAt: new Date(), description: "Primeiro encontro do segundo semestre.", organizingCellGroupId: "celula-discipulos-001", organizingCellGroupName: "Discípulos de Cristo" },
   { id: "team2", name: "Encontro de Paz - Setembro 2024", eventDate: new Date("2024-09-15"), createdAt: new Date(), description: "Foco em novas famílias." },
   { id: "team3", name: "Encontro de Colheita - Novembro 2024", eventDate: new Date("2024-11-10"), createdAt: new Date() },
 ];
@@ -18,7 +19,8 @@ const mockEncounterTeams: EncounterTeam[] = [
 export default function EncounterTeamsPage() {
   const router = useRouter();
 
-  const encounterTeams = mockEncounterTeams; // In a real app, this would come from a context or API call
+  // In a real app, this would come from a context or API call, and would include newly created teams.
+  const encounterTeams = mockEncounterTeams; 
 
   return (
     <div className="space-y-6">
@@ -49,19 +51,25 @@ export default function EncounterTeamsPage() {
           {encounterTeams.map((team) => (
             <Card
               key={team.id}
-              className="shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+              className="shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer flex flex-col justify-between"
               onClick={() => router.push(`/encounter-teams/${team.id}`)}
             >
               <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <UsersRound className="w-7 h-7 text-primary" />
+                <div className="flex items-start gap-3 mb-2">
+                  <UsersRound className="w-7 h-7 text-primary mt-1 shrink-0" />
                   <CardTitle className="font-headline text-xl">{team.name}</CardTitle>
                 </div>
                 {team.eventDate && (
-                  <CardDescription className="flex items-center gap-1 font-body">
-                    <CalendarDays className="w-4 h-4" />
+                  <CardDescription className="flex items-center gap-1.5 font-body text-xs">
+                    <CalendarDays className="w-3.5 h-3.5" />
                     {new Date(team.eventDate).toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </CardDescription>
+                )}
+                {team.organizingCellGroupName && (
+                   <CardDescription className="flex items-center gap-1.5 font-body text-xs mt-1">
+                        <Home className="w-3.5 h-3.5" />
+                        Org: {team.organizingCellGroupName}
+                    </CardDescription>
                 )}
               </CardHeader>
               <CardContent>
