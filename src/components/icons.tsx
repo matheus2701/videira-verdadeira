@@ -4,7 +4,7 @@ import {
   LayoutDashboard,
   Users, // Usado para "Vidas"
   HandCoins,
-  ShieldCheck,
+  Home, // Alterado de ShieldCheck para Home
   ClipboardCheck,
   BarChartBig,
   LayoutGrid, // Usado para "Grupos de Células"
@@ -22,7 +22,7 @@ export const Icons = {
   CellGroups: LayoutGrid,
   Lideres: UserCog, // Novo ícone para Líderes
   Offerings: HandCoins,
-  PeaceHouses: ShieldCheck,
+  PeaceHouses: Home, // Alterado de ShieldCheck para Home
   Lessons: ClipboardCheck,
   Reports: BarChartBig,
   Settings: Settings,
