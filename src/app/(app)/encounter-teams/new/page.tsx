@@ -21,14 +21,14 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Save } from "lucide-react";
-import type { EncounterTeam, CellGroup } from "@/types";
+import { ArrowLeft, Save, UserCircle } from "lucide-react";
+import type { EncounterTeam, User as AuthUser } from "@/types";
 
 const encounterTeamFormSchema = z.object({
   name: z.string().min(3, { message: "O nome da equipe deve ter pelo menos 3 caracteres." }),
   eventDate: z.date().optional(),
   description: z.string().optional(),
-  organizingCellGroupId: z.string().optional(),
+  organizerUserId: z.string().optional(),
 });
 
 type EncounterTeamFormValues = z.infer<typeof encounterTeamFormSchema>;
@@ -36,7 +36,7 @@ type EncounterTeamFormValues = z.infer<typeof encounterTeamFormSchema>;
 export default function NewEncounterTeamPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { mockCellGroups } = useAuth(); 
+  const { mockUsers } = useAuth(); // Get mockUsers for organizer selection
 
   const form = useForm<EncounterTeamFormValues>({
     resolver: zodResolver(encounterTeamFormSchema),
@@ -44,35 +44,39 @@ export default function NewEncounterTeamPage() {
       name: "",
       description: "",
       eventDate: undefined,
-      organizingCellGroupId: "_none_", 
+      organizerUserId: "_none_",
     },
   });
 
   function onSubmit(data: EncounterTeamFormValues) {
-    const selectedCell = data.organizingCellGroupId === "_none_" 
-      ? undefined 
-      : mockCellGroups.find(cg => cg.id === data.organizingCellGroupId);
+    const selectedOrganizer = data.organizerUserId === "_none_"
+      ? undefined
+      : mockUsers.find(u => u.id === data.organizerUserId);
 
     const newTeamData: Partial<EncounterTeam> = {
-      id: `team-${Date.now()}`, 
+      id: `team-${Date.now()}`,
       name: data.name,
       eventDate: data.eventDate,
       description: data.description,
-      organizingCellGroupId: data.organizingCellGroupId === "_none_" ? undefined : data.organizingCellGroupId,
-      organizingCellGroupName: selectedCell?.name,
+      organizerUserId: selectedOrganizer?.id,
+      organizerUserName: selectedOrganizer?.name,
       createdAt: new Date(),
     };
     console.log("Dados da Nova Equipe de Encontro:", newTeamData);
     // In a real app, you'd save this to a backend or context
-    // e.g., addEncounterTeam(newTeamData); 
+    // e.g., addEncounterTeam(newTeamData);
     // For now, new data is only logged and won't persist in the mock list on the main page unless that's also updated.
 
     toast({
       title: "Equipe de Encontro Salva (Simulação)",
-      description: `A equipe "${data.name}" ${selectedCell ? `vinculada à célula ${selectedCell.name}` : ''} foi registrada no console.`,
+      description: `A equipe "${data.name}" ${selectedOrganizer ? `organizada por ${selectedOrganizer.name}` : ''} foi registrada no console.`,
     });
     router.push("/encounter-teams");
   }
+
+  const eligibleOrganizers = mockUsers.filter(
+    u => u.role === 'missionario' || u.role === 'lider_de_celula'
+  );
 
   return (
     <div className="space-y-6">
@@ -105,26 +109,29 @@ export default function NewEncounterTeamPage() {
               />
               <FormField
                 control={form.control}
-                name="organizingCellGroupId"
+                name="organizerUserId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Célula Vinculada ao Encontro (Opcional)</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value || "_none_"} 
+                    <FormLabel className="flex items-center gap-2">
+                      <UserCircle className="h-4 w-4" />
+                      Organizador do Encontro (Opcional)
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || "_none_"}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione a célula vinculada" />
+                          <SelectValue placeholder="Selecione o organizador" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="_none_">Nenhuma</SelectItem>
-                        {mockCellGroups
-                          .filter(cell => cell && cell.id && cell.id !== "") 
-                          .map((cell: CellGroup) => (
-                          <SelectItem key={cell.id} value={cell.id}>
-                            {cell.name} (Geração: {cell.geracao || 'N/A'})
+                        <SelectItem value="_none_">Nenhum</SelectItem>
+                        {eligibleOrganizers
+                          .filter(user => user && user.id && user.id !== "")
+                          .map((user: AuthUser) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.role === 'missionario' ? 'Missionário' : 'Líder de Célula'})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -139,8 +146,8 @@ export default function NewEncounterTeamPage() {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Data do Evento (Opcional)</FormLabel>
-                     <DatePicker 
-                        date={field.value} 
+                     <DatePicker
+                        date={field.value}
                         setDate={field.onChange}
                         placeholder="Escolha uma data"
                       />

@@ -4,21 +4,44 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, UsersRound, CalendarDays, Home } from 'lucide-react'; 
+import { PlusCircle, UsersRound, CalendarDays, UserCircle } from 'lucide-react';
 import type { EncounterTeam } from '@/types';
 import { useRouter } from 'next/navigation';
 
 // Mock data - replace with actual data fetching
+// Note: Update these mocks to use organizerUserId and organizerUserName
 const mockEncounterTeams: EncounterTeam[] = [
-  { id: "team1", name: "Encontro de Paz - Julho 2024", eventDate: new Date("2024-07-20"), createdAt: new Date(), description: "Primeiro encontro do segundo semestre.", organizingCellGroupId: "celula-discipulos-001", organizingCellGroupName: "Discípulos de Cristo" },
-  { id: "team2", name: "Encontro de Paz - Setembro 2024", eventDate: new Date("2024-09-15"), createdAt: new Date(), description: "Foco em novas famílias." },
-  { id: "team3", name: "Encontro de Colheita - Novembro 2024", eventDate: new Date("2024-11-10"), createdAt: new Date() },
+  {
+    id: "team1",
+    name: "Encontro de Paz - Julho 2024",
+    eventDate: new Date("2024-07-20"),
+    createdAt: new Date(),
+    description: "Primeiro encontro do segundo semestre.",
+    organizerUserId: "user-missionario-01", // Example: Missionário como organizador
+    organizerUserName: "Admin Missionário"
+  },
+  {
+    id: "team2",
+    name: "Encontro de Paz - Setembro 2024",
+    eventDate: new Date("2024-09-15"),
+    createdAt: new Date(),
+    description: "Foco em novas famílias.",
+    organizerUserId: "user-lider-joao-01", // Example: Líder João como organizador
+    organizerUserName: "Líder João"
+  },
+  {
+    id: "team3",
+    name: "Encontro de Colheita - Novembro 2024",
+    eventDate: new Date("2024-11-10"),
+    createdAt: new Date(),
+    // No organizer defined for this example
+  },
 ];
 
 export default function EncounterTeamsPage() {
   const router = useRouter();
 
-  const encounterTeams = mockEncounterTeams; 
+  const encounterTeams = mockEncounterTeams;
 
   return (
     <div className="space-y-6">
@@ -63,10 +86,10 @@ export default function EncounterTeamsPage() {
                     {new Date(team.eventDate).toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </CardDescription>
                 )}
-                {team.organizingCellGroupName && (
+                {team.organizerUserName && (
                    <CardDescription className="flex items-center gap-1.5 font-body text-xs mt-1">
-                        <Home className="w-3.5 h-3.5" />
-                        Célula: {team.organizingCellGroupName}
+                        <UserCircle className="w-3.5 h-3.5" />
+                        Organizador: {team.organizerUserName}
                     </CardDescription>
                 )}
               </CardHeader>

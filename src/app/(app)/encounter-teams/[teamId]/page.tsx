@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { ArrowLeft, PlusCircle, User, UsersRound, ShieldCheck, Utensils, HelpingHand, UserCog, CalendarDays, Home } from "lucide-react"; 
+import { ArrowLeft, PlusCircle, User, UsersRound, ShieldCheck, Utensils, HelpingHand, UserCog, CalendarDays, UserCircle as OrganizerIcon } from "lucide-react";
 import type { EncounterTeam, EncounterTeamMember, EncounterTeamRole } from "@/types";
 import { encounterTeamRoles } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Mock data - replace with Firebase fetching
 const mockEncounterTeams: EncounterTeam[] = [
-  { id: "team1", name: "Encontro de Paz - Julho 2024", eventDate: new Date("2024-07-20T10:00:00Z"), createdAt: new Date(), description: "Primeiro encontro do segundo semestre.", organizingCellGroupId: "celula-discipulos-001", organizingCellGroupName: "Discípulos de Cristo" },
-  { id: "team2", name: "Encontro de Paz - Setembro 2024", eventDate: new Date("2024-09-15T10:00:00Z"), createdAt: new Date(), description: "Foco em novas famílias." },
+  { id: "team1", name: "Encontro de Paz - Julho 2024", eventDate: new Date("2024-07-20T10:00:00Z"), createdAt: new Date(), description: "Primeiro encontro do segundo semestre.", organizerUserId: "user-missionario-01", organizerUserName: "Admin Missionário" },
+  { id: "team2", name: "Encontro de Paz - Setembro 2024", eventDate: new Date("2024-09-15T10:00:00Z"), createdAt: new Date(), description: "Foco em novas famílias.", organizerUserId: "user-lider-joao-01", organizerUserName: "Líder João" },
 ];
 
 const mockTeamMembers: EncounterTeamMember[] = [
@@ -48,7 +48,7 @@ export default function EncounterTeamDetailsPage() {
       setLoading(true);
       // Simulate API call
       setTimeout(() => {
-        const foundTeam = mockEncounterTeams.find(t => t.id === teamId); 
+        const foundTeam = mockEncounterTeams.find(t => t.id === teamId);
         const teamMembers = mockTeamMembers.filter(m => m.encounterTeamId === teamId);
         setTeam(foundTeam || null);
         setMembers(teamMembers);
@@ -112,10 +112,10 @@ export default function EncounterTeamDetailsPage() {
                 Data: {new Date(team.eventDate).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </span>
             )}
-            {team.organizingCellGroupName && (
+            {team.organizerUserName && (
                 <span className="flex items-center gap-2">
-                    <Home className="w-4 h-4" /> {/* Can use LinkIcon or other suitable icon */}
-                    Célula Vinculada: {team.organizingCellGroupName}
+                    <OrganizerIcon className="w-4 h-4" />
+                    Organizador: {team.organizerUserName}
                 </span>
             )}
         </div>
@@ -141,7 +141,7 @@ export default function EncounterTeamDetailsPage() {
 
       {encounterTeamRoles.map(role => {
         const roleMembers = membersByRole[role];
-        if (!roleMembers || roleMembers.length === 0) return null; 
+        if (!roleMembers || roleMembers.length === 0) return null;
 
         const IconComponent = roleIconsRecord[role] || User;
 

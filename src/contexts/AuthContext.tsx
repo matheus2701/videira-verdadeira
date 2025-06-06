@@ -11,6 +11,7 @@ interface AuthContextType {
   loginAs: (role: Role) => void;
   logout: () => void;
   // Mock data for demonstration purposes, would come from a backend in a real app
+  mockUsers: User[]; // Lista de usuários mock para seleção (ex: organizador)
   mockVidas: Vida[];
   mockCellGroups: CellGroup[];
   updateMockVida: (updatedVida: Vida) => void;
@@ -30,24 +31,24 @@ const initialMockVidas: Vida[] = [
 
 // Mock initial Cell Groups
 const initialMockCellGroups: CellGroup[] = [
-    { 
-      id: 'celula-discipulos-001', 
-      name: 'Discípulos de Cristo', 
-      address: 'Rua da Fé, 123', 
-      meetingDay: 'Quarta-feira', 
-      meetingTime: '19:30', 
-      geracao: 'G1', 
-      liderVidaId: 'vida-lider-joao', 
+    {
+      id: 'celula-discipulos-001',
+      name: 'Discípulos de Cristo',
+      address: 'Rua da Fé, 123',
+      meetingDay: 'Quarta-feira',
+      meetingTime: '19:30',
+      geracao: 'G1',
+      liderVidaId: 'vida-lider-joao',
       liderNome: 'Líder João',
       meetingStatus: 'aconteceu',
       lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 2)) // 2 days ago
     },
-    { 
-      id: 'celula-leoes-002', 
-      name: 'Leões de Judá', 
-      address: 'Av. Esperança, 456', 
-      meetingDay: 'Quinta-feira', 
-      meetingTime: '20:00', 
+    {
+      id: 'celula-leoes-002',
+      name: 'Leões de Judá',
+      address: 'Av. Esperança, 456',
+      meetingDay: 'Quinta-feira',
+      meetingTime: '20:00',
       geracao: 'G2',
       meetingStatus: 'agendada',
       lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 7)) // 7 days ago
@@ -72,6 +73,9 @@ const mockLiderUser: User = {
   cellGroupId: 'celula-discipulos-001', // ID da célula que ele lidera
   cellGroupName: 'Discípulos de Cristo', // Nome da célula para exibição
 };
+
+const mockUsersList: User[] = [mockMissionario, mockLiderUser];
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(mockMissionario);
@@ -116,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser,
     loginAs,
     logout,
+    mockUsers: mockUsersList, // Expose the list of mock users
     mockVidas: vidasData,
     mockCellGroups: cellGroupsData,
     updateMockVida,

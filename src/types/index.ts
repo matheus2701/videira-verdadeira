@@ -71,8 +71,8 @@ export interface EncounterTeam {
   eventDate?: Date;
   description?: string;
   createdAt: Date;
-  organizingCellGroupId?: string; // ID da célula organizadora
-  organizingCellGroupName?: string; // Nome da célula organizadora para exibição
+  organizerUserId?: string; // ID do Usuário organizador (Missionário ou Líder)
+  organizerUserName?: string; // Nome do Usuário organizador para exibição
 }
 
 export interface EncounterTeamMember {
