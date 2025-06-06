@@ -45,10 +45,9 @@ export default function LandingPage() {
               <p className="text-muted-foreground">Organize e acompanhe os detalhes de cada célula.</p>
             </div>
             <div className="p-6 bg-card rounded-lg shadow-md">
-              {/* Alterado Icons.Members para Icons.Vidas */}
               <Icons.Vidas className="h-10 w-10 text-primary mb-4" /> 
               <h3 className="font-headline text-2xl font-semibold text-foreground mb-2">Vidas</h3>
-              <p className="text-muted-foreground">Mantenha um diretório completo das suas vidas.</p>
+              <p className="text-muted-foreground">Mantenha um diretório completo das vidas do Senhor Jesus.</p>
             </div>
             <div className="p-6 bg-card rounded-lg shadow-md">
               <Icons.PeaceHouses className="h-10 w-10 text-primary mb-4" />
