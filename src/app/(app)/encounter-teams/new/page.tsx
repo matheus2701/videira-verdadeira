@@ -36,7 +36,7 @@ type EncounterTeamFormValues = z.infer<typeof encounterTeamFormSchema>;
 export default function NewEncounterTeamPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { mockUsers } = useAuth(); // Get mockUsers for organizer selection
+  const { mockUsers } = useAuth(); 
 
   const form = useForm<EncounterTeamFormValues>({
     resolver: zodResolver(encounterTeamFormSchema),
@@ -44,16 +44,16 @@ export default function NewEncounterTeamPage() {
       name: "",
       description: "",
       eventDate: undefined,
-      organizerUserId: "_none_",
+      organizerUserId: "_none_", // Alterado para _none_
     },
   });
 
   function onSubmit(data: EncounterTeamFormValues) {
-    const selectedOrganizer = data.organizerUserId === "_none_"
+    const selectedOrganizer = data.organizerUserId === "_none_" || !data.organizerUserId
       ? undefined
       : mockUsers.find(u => u.id === data.organizerUserId);
 
-    const newTeamData: Partial<EncounterTeam> = {
+    const newTeamData: EncounterTeam = { // Alterado para EncounterTeam
       id: `team-${Date.now()}`,
       name: data.name,
       eventDate: data.eventDate,
@@ -65,8 +65,7 @@ export default function NewEncounterTeamPage() {
     console.log("Dados da Nova Equipe de Encontro:", newTeamData);
     // In a real app, you'd save this to a backend or context
     // e.g., addEncounterTeam(newTeamData);
-    // For now, new data is only logged and won't persist in the mock list on the main page unless that's also updated.
-
+    
     toast({
       title: "Equipe de Encontro Salva (Simulação)",
       description: `A equipe "${data.name}" ${selectedOrganizer ? `organizada por ${selectedOrganizer.name}` : ''} foi registrada no console.`,
@@ -118,7 +117,7 @@ export default function NewEncounterTeamPage() {
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      value={field.value || "_none_"}
+                      value={field.value || "_none_"} // Garante que o value do Select corresponda a _none_ se undefined
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -128,7 +127,7 @@ export default function NewEncounterTeamPage() {
                       <SelectContent>
                         <SelectItem value="_none_">Nenhum</SelectItem>
                         {eligibleOrganizers
-                          .filter(user => user && user.id && user.id !== "")
+                          .filter(user => user && user.id && user.id !== "") 
                           .map((user: AuthUser) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name} ({user.role === 'missionario' ? 'Missionário' : 'Líder de Célula'})
