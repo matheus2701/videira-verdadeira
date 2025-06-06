@@ -8,7 +8,7 @@ import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from "@/components/ui/form"; // Renamed FormLabel
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import type { CellGroup, Vida, CellMeetingStatus } from "@/types";
 import { cellMeetingStatusOptions } from "@/types";
+import { Label } from "@/components/ui/label"; // Import standard Label
 
 const cellGroupSchema = z.object({
   name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres." }),
@@ -165,10 +166,10 @@ export default function CellGroupsPage() {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-                  <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nome do Grupo</FormLabel><FormControl><Input placeholder="Ex: Discípulos de Cristo" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><RHFFormLabel>Nome do Grupo</RHFFormLabel><FormControl><Input placeholder="Ex: Discípulos de Cristo" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="liderVidaId" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Líder da Célula (Opcional)</FormLabel>
+                      <RHFFormLabel>Líder da Célula (Opcional)</RHFFormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecione um líder (status Ativo/Treinamento)" /></SelectTrigger></FormControl>
                         <SelectContent>
@@ -181,18 +182,18 @@ export default function CellGroupsPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Endereço</FormLabel><FormControl><Input placeholder="Ex: Rua Exemplo, 123, Bairro" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="geracao" render={({ field }) => ( <FormItem><FormLabel>Geração (Opcional)</FormLabel><FormControl><Input placeholder="Ex: G1, Conquistadores" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><RHFFormLabel>Endereço</RHFFormLabel><FormControl><Input placeholder="Ex: Rua Exemplo, 123, Bairro" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="geracao" render={({ field }) => ( <FormItem><RHFFormLabel>Geração (Opcional)</RHFFormLabel><FormControl><Input placeholder="Ex: G1, Conquistadores" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="meetingDay" render={({ field }) => ( <FormItem><FormLabel>Dia da Reunião</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione o dia" /></SelectTrigger></FormControl><SelectContent>{daysOfWeek.map(day => (<SelectItem key={day} value={day}>{day}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="meetingTime" render={({ field }) => ( <FormItem><FormLabel>Horário (HH:MM)</FormLabel><FormControl><Input placeholder="Ex: 19:30" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="meetingDay" render={({ field }) => ( <FormItem><RHFFormLabel>Dia da Reunião</RHFFormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione o dia" /></SelectTrigger></FormControl><SelectContent>{daysOfWeek.map(day => (<SelectItem key={day} value={day}>{day}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="meetingTime" render={({ field }) => ( <FormItem><RHFFormLabel>Horário (HH:MM)</RHFFormLabel><FormControl><Input placeholder="Ex: 19:30" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                   <FormField
                     control={form.control}
                     name="meetingStatus"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Status da Reunião</FormLabel>
+                        <RHFFormLabel>Status da Reunião</RHFFormLabel>
                         <Select onValueChange={field.onChange} value={field.value || 'agendada'}>
                           <FormControl>
                             <SelectTrigger>
@@ -215,7 +216,7 @@ export default function CellGroupsPage() {
                       name="meetingStatusReason"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Motivo do Status</FormLabel>
+                          <RHFFormLabel>Motivo do Status</RHFFormLabel>
                           <FormControl>
                             <Textarea placeholder="Descreva o motivo..." {...field} />
                           </FormControl>
@@ -244,18 +245,18 @@ export default function CellGroupsPage() {
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormItem>
-              <FormLabel>Nome do Grupo</FormLabel>
-              <Input placeholder="Buscar por nome..." value={searchTermName} onChange={(e) => setSearchTermName(e.target.value)} />
-            </FormItem>
-            <FormItem>
-              <FormLabel>Nome do Líder</FormLabel>
-              <Input placeholder="Buscar por líder..." value={searchTermLeader} onChange={(e) => setSearchTermLeader(e.target.value)} />
-            </FormItem>
-            <FormItem>
-              <FormLabel>Geração</FormLabel>
-              <Input placeholder="Buscar por geração..." value={searchTermGeneration} onChange={(e) => setSearchTermGeneration(e.target.value)} />
-            </FormItem>
+            <div className="space-y-2">
+              <Label htmlFor="filter-name">Nome do Grupo</Label>
+              <Input id="filter-name" placeholder="Buscar por nome..." value={searchTermName} onChange={(e) => setSearchTermName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="filter-leader">Nome do Líder</Label>
+              <Input id="filter-leader" placeholder="Buscar por líder..." value={searchTermLeader} onChange={(e) => setSearchTermLeader(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="filter-generation">Geração</Label>
+              <Input id="filter-generation" placeholder="Buscar por geração..." value={searchTermGeneration} onChange={(e) => setSearchTermGeneration(e.target.value)} />
+            </div>
           </CardContent>
         </Card>
       )}
@@ -310,3 +311,6 @@ export default function CellGroupsPage() {
     </div>
   );
 }
+
+
+      
