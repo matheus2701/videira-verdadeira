@@ -111,7 +111,7 @@ function AppShellInner({ children }: AppShellLayoutProps) {
           <div className="flex items-center gap-4">
             <SidebarTrigger className="md:hidden" />
             <div>
-              <h1 className="font-headline text-lg sm:text-xl font-semibold text-foreground">
+              <h1 className="font-headline text-base sm:text-lg font-semibold text-foreground">
                 {currentPage?.label || "Videira Verdadeira"}
               </h1>
             </div>
