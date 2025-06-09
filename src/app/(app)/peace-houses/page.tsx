@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Home } from "lucide-react"; // Adicionado Home
 import { useToast } from "@/hooks/use-toast";
 
 const peaceHouseSchema = z.object({
@@ -20,7 +20,7 @@ const peaceHouseSchema = z.object({
   scheduledDate: z.date({ required_error: "Data de agendamento é obrigatória." }),
   location: z.string().min(5, { message: "Local deve ter pelo menos 5 caracteres." }),
   hostName: z.string().min(3, { message: "Nome do anfitrião deve ter pelo menos 3 caracteres." }),
-  hostContact: z.string().min(10, { message: "Contato do anfitrião inválido." }),
+  hostContact: z.string().min(10, { message: "Contato do anfitrião inválido." }).regex(/^\s*(\(?\d{2}\)?\s?)?(\d{4,5}-?\d{4})\s*$/, { message: "Formato de telefone inválido."}),
   designatedTeams: z.string().optional(),
   expectedParticipants: z.coerce.number().int().nonnegative({ message: "Deve ser um número não negativo." }).optional(),
 });
@@ -48,7 +48,7 @@ export default function PeaceHousesPage() {
     console.log("Dados da Casa de Paz:", values);
     toast({
       title: "Sucesso!",
-      description: "Casa de Paz agendada com sucesso.",
+      description: "Casa de Paz agendada com sucesso (simulado).",
     });
     setIsDialogOpen(false);
     form.reset();
@@ -57,7 +57,9 @@ export default function PeaceHousesPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="font-headline text-3xl font-semibold">Coordenação de Casas de Paz</h1>
+        <h1 className="font-headline text-3xl font-semibold flex items-center gap-2">
+          <Home className="w-8 h-8 text-primary" /> Coordenação de Casas de Paz
+        </h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -68,7 +70,7 @@ export default function PeaceHousesPage() {
             <DialogHeader>
               <DialogTitle className="font-headline">Agendar Nova Casa de Paz</DialogTitle>
               <DialogDescription className="font-body">
-                Preencha os detalhes abaixo para agendar uma nova Casa de Paz.
+                Preencha os detalhes abaixo para registrar o agendamento de uma nova Casa de Paz.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -91,7 +93,7 @@ export default function PeaceHousesPage() {
                   name="hostName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome do Filho da Paz</FormLabel>
+                      <FormLabel>Nome do Anfitrião/Filho da Paz</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Família Silva" {...field} />
                       </FormControl>
@@ -104,7 +106,7 @@ export default function PeaceHousesPage() {
                   name="hostContact"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contato do Filho da Paz</FormLabel>
+                      <FormLabel>Contato do Anfitrião/Filho da Paz</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: (XX) XXXXX-XXXX" {...field} />
                       </FormControl>
@@ -134,6 +136,7 @@ export default function PeaceHousesPage() {
                       <DatePicker 
                         date={field.value} 
                         setDate={field.onChange}
+                        placeholder="Selecione a data do evento"
                       />
                       <FormMessage />
                     </FormItem>
@@ -146,7 +149,7 @@ export default function PeaceHousesPage() {
                     <FormItem>
                       <FormLabel>Nº de Participantes Esperados (Opcional)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="Ex: 10" {...field} onChange={e => field.onChange(parseInt(e.target.value,10) || undefined)} />
+                        <Input type="number" placeholder="Ex: 10" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value,10))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -157,18 +160,16 @@ export default function PeaceHousesPage() {
                   name="designatedTeams"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Equipes Designadas (Opcional)</FormLabel>
+                      <FormLabel>Equipes Designadas / Observações (Opcional)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Nomes dos membros da equipe ou observações" {...field} />
+                        <Textarea placeholder="Nomes dos membros da equipe, materiais necessários, etc." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <DialogFooter className="pt-4 sticky bottom-0 bg-background pb-1">
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">Cancelar</Button>
-                  </DialogClose>
+                <DialogFooter className="pt-4 sticky bottom-0 bg-background pb-1 z-10">
+                  <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
                   <Button type="submit">Salvar Agendamento</Button>
                 </DialogFooter>
               </form>
@@ -178,15 +179,16 @@ export default function PeaceHousesPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Agendamento e Acompanhamento</CardTitle>
+          <CardTitle className="font-headline">Agendamentos de Casas de Paz</CardTitle>
           <CardDescription className="font-body">
-            Coordene reuniões de Casas de Paz registrando participantes, grupo de célula responsável, data agendada e equipes designadas.
+            Visualize e gerencie as Casas de Paz agendadas. (Listagem em desenvolvimento)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for table or list */}
-          <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-            Nenhuma Casa de Paz agendada. Clique em "Agendar Casa de Paz" para começar.
+          <div className="mt-4 p-8 border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground space-y-3">
+            <Home className="w-12 h-12 text-primary/70" />
+            <p className="font-medium">Nenhuma Casa de Paz agendada ou listada ainda.</p>
+            <p className="text-sm">Clique em "Agendar Casa de Paz" para adicionar a primeira.</p>
           </div>
         </CardContent>
       </Card>
