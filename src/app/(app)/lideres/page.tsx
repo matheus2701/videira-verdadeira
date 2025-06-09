@@ -57,7 +57,7 @@ export default function LideresPage() {
       return;
     }
     toggleUserActiveStatus(userId);
-    const updatedUser = mockUsers.find(u => u.id === userId);
+    const updatedUser = mockUsers.find(u => u.id === userId); // Busca atualizada após toggle
     toast({
       title: "Status de Acesso Alterado",
       description: `O acesso para ${leaderName} (${updatedUser?.email}) foi ${updatedUser?.isActive ? 'ativado' : 'inativado'}.`,
@@ -97,7 +97,7 @@ export default function LideresPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome do Líder</TableHead>
+                  <TableHead>Nome do Líder / Email</TableHead>
                   <TableHead>Célula Liderada</TableHead>
                   <TableHead>Status Líder (Vida)</TableHead>
                   <TableHead>Status Acesso (Login)</TableHead>
