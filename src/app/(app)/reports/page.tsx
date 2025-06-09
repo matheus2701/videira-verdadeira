@@ -199,7 +199,7 @@ export default function ReportsPage() {
 
   // Função para download de CSV
   const downloadCSV = (data: any[], filename: string, headersMap?: Record<string, string>) => {
-    if (!data || data.length === 0) {
+    if (!data || data.length === 0 || data.every(row => Object.values(row).every(val => val === 0 || val === ''))) {
       toast({
         title: "Nenhum Dado",
         description: "Não há dados para exportar com os filtros atuais.",
@@ -283,7 +283,19 @@ export default function ReportsPage() {
       amount: "Valor (R$)",
       notes: "Notas"
     };
-    downloadCSV(dataToExport, `relatorio_ofertas_${selectedReportOfferingMonth}_${selectedReportOfferingYear}.csv`, headers);
+    downloadCSV(dataToExport, `relatorio_ofertas_${reportMonths.find(m=>m.value === selectedReportOfferingMonth)?.label || selectedReportOfferingMonth}_${selectedReportOfferingYear}.csv`, headers);
+  };
+
+  const handleDownloadGrowthCSV = () => {
+    const dataToExport = vidasGrowthChartData.map(data => ({
+        month: data.month,
+        count: data.count,
+    }));
+    const headers = {
+        month: "Mês",
+        count: "Novas Vidas",
+    };
+    downloadCSV(dataToExport, `relatorio_crescimento_vidas_${selectedGrowthYear}.csv`, headers);
   };
 
 
@@ -432,14 +444,26 @@ export default function ReportsPage() {
             </div>
           )}
         </CardContent>
-         <CardFooter>
-            {totalVidasNoAno !== null ? (
-                 <p className="text-sm text-muted-foreground font-body">
-                    Total de Novas Vidas em {selectedGrowthYear}: <span className="font-semibold text-primary">{totalVidasNoAno}</span>.
-                </p>
-            ) : (
-                <Skeleton className="h-5 w-48" />
-            )}
+         <CardFooter className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
+            <div>
+                {totalVidasNoAno !== null ? (
+                    <p className="text-sm text-muted-foreground font-body">
+                        Total de Novas Vidas em {selectedGrowthYear}: <span className="font-semibold text-primary">{totalVidasNoAno}</span>.
+                    </p>
+                ) : (
+                    <Skeleton className="h-5 w-48" />
+                )}
+            </div>
+            <Button 
+                onClick={handleDownloadGrowthCSV} 
+                variant="outline" 
+                size="sm" 
+                disabled={vidasGrowthChartData.every(d => d.count === 0) && mockVidas.length > 0}
+                className="mt-2 sm:mt-0"
+            >
+                <Download className="mr-2 h-4 w-4" />
+                Baixar CSV Crescimento de Vidas
+            </Button>
         </CardFooter>
       </Card>
 
