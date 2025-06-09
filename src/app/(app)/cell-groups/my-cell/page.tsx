@@ -56,7 +56,7 @@ export default function MyCellPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { user, mockCellGroups, updateMockCellGroup } = useAuth(); 
+  const { user, setUser, mockCellGroups, updateMockCellGroup } = useAuth(); 
 
   const currentCellDetails = useMemo(() => {
     if (user?.cellGroupId) {
@@ -69,46 +69,39 @@ export default function MyCellPage() {
     if (currentCellDetails) {
       return currentCellDetails;
     }
-    if (user) { // User exists but no cellGroupId or cell not found
-      const defaultLeaderCellName = user.name ? `Célula de ${user.name}` : "Minha Célula";
+    // Se o líder não tem uma célula ainda, ou a célula não foi encontrada (improvável com mocks),
+    // cria dados de fallback para exibição e para o formulário.
+    if (user && user.role === 'lider_de_celula') {
+      const defaultLeaderCellName = user.name ? `Célula de ${user.name}` : "Minha Célula (Nova)";
       return {
-        id: user.cellGroupId || `temp-id-${user.id}`, // Use temp id if no cellGroupId
+        id: user.cellGroupId || `temp-id-${user.id}`,
         name: defaultLeaderCellName,
         liderNome: user.name,
-        address: "Rua da Fé, 123, Bairro Esperança", 
-        meetingDay: "Quarta-feira", 
-        meetingTime: "19:30", 
-        geracao: "G1 (Exemplo)", 
+        address: "Defina o endereço", 
+        meetingDay: "Defina o dia", 
+        meetingTime: "00:00", 
+        geracao: "", 
         meetingStatus: 'agendada' as CellMeetingStatus,
         lastStatusUpdate: new Date(),
       };
     }
-    return {}; // Should ideally not happen if user is a cell leader
+    // Retorno para caso user seja null ou não líder, embora a página tenha guarda para isso.
+    return {} as Partial<CellGroup>; 
   }, [currentCellDetails, user]);
 
 
   const form = useForm<MyCellGroupFormValues>({
     resolver: zodResolver(myCellGroupSchema),
-    defaultValues: {
-        name: myCellDataForForm?.name || "",
-        address: myCellDataForForm?.address || "",
-        meetingDay: myCellDataForForm?.meetingDay || undefined,
-        meetingTime: myCellDataForForm?.meetingTime || "",
-        geracao: myCellDataForForm?.geracao || "",
-    },
+    defaultValues: {}, // Será preenchido pelo useEffect
   });
 
   const statusForm = useForm<WeeklyStatusFormValues>({
     resolver: zodResolver(weeklyStatusSchema),
-    defaultValues: {
-        meetingStatus: myCellDataForForm?.meetingStatus || 'agendada',
-        meetingStatusReason: myCellDataForForm?.meetingStatusReason || "",
-        statusUpdateDate: myCellDataForForm?.lastStatusUpdate ? new Date(myCellDataForForm.lastStatusUpdate) : new Date(),
-    }
+    defaultValues: {}, // Será preenchido pelo useEffect
   });
   
   useEffect(() => {
-    // Reset forms when the user or their specific cell data changes
+    // Reset forms quando myCellDataForForm (que depende de currentCellDetails e user) mudar.
     form.reset({
         name: myCellDataForForm.name || "",
         address: myCellDataForForm.address || "",
@@ -125,30 +118,46 @@ export default function MyCellPage() {
 
 
   function onSubmitEdit(values: MyCellGroupFormValues) {
-    if (!user?.cellGroupId && !myCellDataForForm.id?.startsWith('temp-id')) {
-      toast({ title: "Erro", description: "Nenhuma célula associada para atualizar.", variant: "destructive" });
-      return;
-    }
-    const cellIdToUpdate = user?.cellGroupId || myCellDataForForm.id;
+    if (!user) return;
+
+    const cellIdToUpdate = user.cellGroupId || myCellDataForForm.id;
     if (!cellIdToUpdate) {
-         toast({ title: "Erro", description: "ID da célula não encontrado.", variant: "destructive" });
+         toast({ title: "Erro", description: "ID da célula não encontrado para atualização.", variant: "destructive" });
          return;
     }
+    
+    // Base os dados na célula atual ou nos dados do formulário de fallback
+    const baseCellData = currentCellDetails || myCellDataForForm;
 
     const updatedCell: CellGroup = {
-      ...(currentCellDetails || {}), // Start with existing details if available
+      ...baseCellData,
       ...values,
       id: cellIdToUpdate, 
-      liderNome: user?.name || myCellDataForForm.liderNome, 
-      name: values.name, 
-      address: values.address,
-      meetingDay: values.meetingDay,
-      meetingTime: values.meetingTime,
-      geracao: values.geracao,
-      meetingStatus: currentCellDetails?.meetingStatus || myCellDataForForm.meetingStatus, // Preserve status from context
-      lastStatusUpdate: currentCellDetails?.lastStatusUpdate || myCellDataForForm.lastStatusUpdate, // Preserve status date
+      liderVidaId: user.vidaId, // Garante que o líder da célula é o usuário logado
+      liderNome: user.name, 
+      meetingStatus: baseCellData.meetingStatus || 'agendada',
+      lastStatusUpdate: baseCellData.lastStatusUpdate || new Date(),
     };
+
     updateMockCellGroup(updatedCell); 
+
+    // Se o nome da célula mudou e o usuário logado é o líder desta célula, atualize o user no AuthContext
+    if (user.cellGroupId === updatedCell.id && user.cellGroupName !== updatedCell.name) {
+        setUser({ ...user, cellGroupName: updatedCell.name });
+    }
+    // Se o líder não tinha cellGroupId (primeira edição de uma "nova" célula), atualize o user no AuthContext
+    if (!user.cellGroupId && cellIdToUpdate.startsWith('temp-id-') && user.role === 'lider_de_celula') {
+        // Idealmente, `updateMockCellGroup` poderia retornar o ID real da célula se fosse um novo cadastro.
+        // Para o mock, se `addMockCellGroup` for usado para "novas" células de líder, isso seria mais limpo.
+        // Por ora, se o ID é temporário, após salvar, o líder ainda não teria o ID da célula no seu objeto User.
+        // Isso seria melhor tratado se `updateMockCellGroup` pudesse adicionar uma célula se `temp-id` for detectado.
+        // Para esta refatoração, vamos assumir que updateMockCellGroup atualiza o User se ele já tem a célula.
+        // Se era uma nova célula, o user precisa ter seu cellGroupId e cellGroupName atualizados.
+        // Esta lógica pode ser melhorada no AuthContext.
+         setUser({ ...user, cellGroupId: updatedCell.id, cellGroupName: updatedCell.name });
+    }
+
+
     toast({
       title: "Sucesso!",
       description: "Dados da sua célula atualizados.",
@@ -157,7 +166,8 @@ export default function MyCellPage() {
   }
 
   function onSubmitStatusUpdate(values: WeeklyStatusFormValues) {
-     const cellIdToUpdate = user?.cellGroupId || myCellDataForForm.id;
+    if (!user) return;
+    const cellIdToUpdate = user.cellGroupId || myCellDataForForm.id;
     if (!cellIdToUpdate) {
         toast({ title: "Erro", description: "Célula não identificada para atualizar status.", variant: "destructive" });
         return;
@@ -171,7 +181,8 @@ export default function MyCellPage() {
         address: baseCellData.address!,
         meetingDay: baseCellData.meetingDay!,
         meetingTime: baseCellData.meetingTime!,
-        liderNome: baseCellData.liderNome || user?.name,
+        liderVidaId: user.vidaId,
+        liderNome: user.name,
         geracao: baseCellData.geracao,
         meetingStatus: values.meetingStatus,
         meetingStatusReason: values.meetingStatusReason,
@@ -192,12 +203,15 @@ export default function MyCellPage() {
     );
   }
   
+  // Se o líder não tem um cellGroupId E o myCellDataForForm.id não é um ID temporário,
+  // significa que ele não tem célula associada e não estamos no fluxo de "criar a primeira célula".
   if (!user.cellGroupId && !myCellDataForForm.id?.startsWith('temp-id-')) { 
      return (
       <div className="flex flex-col items-center justify-center h-full">
         <ShieldAlert className="w-16 h-16 text-yellow-500 mb-4" />
         <h1 className="font-headline text-3xl font-semibold mb-2">Célula Não Associada</h1>
-        <p className="text-muted-foreground text-center">Você não está associado a uma célula específica.<br/>Entre em contato com um administrador (Missionário).</p>
+        <p className="text-muted-foreground text-center">Você não está associado a uma célula específica.<br/>Pode ser necessário que um administrador (Missionário) crie sua célula ou o associe a uma existente, ou você pode preencher os dados abaixo para configurar sua célula.</p>
+        {/* O formulário abaixo ainda funciona para permitir que ele crie/defina sua célula */}
       </div>
     );
   }
@@ -209,16 +223,18 @@ export default function MyCellPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="font-headline text-2xl sm:text-3xl font-semibold">Gerenciar Minha Célula: {myCellDataForForm.name}</h1>
+        <h1 className="font-headline text-2xl sm:text-3xl font-semibold">Gerenciar Minha Célula: {myCellDataForForm.name || "Nova Célula"}</h1>
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="text-xs sm:text-sm">
-              <Edit3 className="mr-2 h-4 w-4" /> Editar Dados
+              <Edit3 className="mr-2 h-4 w-4" /> {user.cellGroupId || myCellDataForForm.id?.startsWith('temp-id-') ? "Editar Dados" : "Configurar Célula"}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[480px]">
             <DialogHeader>
-              <DialogTitle className="font-headline">Editar Dados da Célula: {myCellDataForForm.name}</DialogTitle>
+              <DialogTitle className="font-headline">
+                {user.cellGroupId || myCellDataForForm.id?.startsWith('temp-id-') ? `Editar Dados da Célula: ${myCellDataForForm.name}` : "Configurar Nova Célula"}
+              </DialogTitle>
               <DialogDescription className="font-body">
                 Atualize os detalhes do seu grupo de célula.
               </DialogDescription>
@@ -226,7 +242,7 @@ export default function MyCellPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmitEdit)} className="space-y-4 py-4">
                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nome do Grupo</FormLabel><FormControl><Input placeholder="Ex: Discípulos de Cristo" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormItem><FormLabel>Nome do Líder</FormLabel><Input value={myCellDataForForm.liderNome || user?.name || ''} readOnly disabled /></FormItem>
+                <FormItem><FormLabel>Nome do Líder</FormLabel><Input value={user?.name || ''} readOnly disabled /></FormItem>
                 <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Endereço</FormLabel><FormControl><Input placeholder="Ex: Rua Exemplo, 123, Bairro" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="geracao" render={({ field }) => ( <FormItem><FormLabel>Geração da Célula</FormLabel><FormControl><Input placeholder="Ex: G1, Conquistadores" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -247,7 +263,7 @@ export default function MyCellPage() {
         <CardHeader><CardTitle className="font-headline">Detalhes da Célula</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm sm:text-base">
             <p><strong className="font-medium">Nome:</strong> {myCellDataForForm.name}</p>
-            <p><strong className="font-medium">Líder:</strong> {myCellDataForForm.liderNome || user?.name}</p>
+            <p><strong className="font-medium">Líder:</strong> {user?.name}</p>
             <p><strong className="font-medium">Endereço:</strong> {myCellDataForForm.address}</p>
             <p><strong className="font-medium">Geração:</strong> {myCellDataForForm.geracao || 'Não definida'}</p>
             <p><strong className="font-medium">Dia da Reunião:</strong> {myCellDataForForm.meetingDay}</p>
@@ -268,7 +284,7 @@ export default function MyCellPage() {
             </div>
             <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="secondary" size="sm" className="text-xs sm:text-sm self-start sm:self-center">
+                    <Button variant="secondary" size="sm" className="text-xs sm:text-sm self-start sm:self-center" disabled={!user.cellGroupId && !myCellDataForForm.id?.startsWith('temp-id-') && !currentCellDetails?.id}>
                         <CalendarCheck2 className="mr-2 h-4 w-4" /> Registrar Status
                     </Button>
                 </DialogTrigger>
@@ -368,3 +384,4 @@ export default function MyCellPage() {
     </div>
   );
 }
+

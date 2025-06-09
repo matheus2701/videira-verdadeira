@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useState, useMemo, useCallback } from 'react';
-import type { User, Role, Vida, CellGroup, StoredOffering, OfferingFormValues } from '@/types'; // Adicionado StoredOffering, OfferingFormValues
+import type { User, Role, Vida, CellGroup, StoredOffering, OfferingFormValues, VidaStatus } from '@/types'; // Adicionado StoredOffering, OfferingFormValues
 
 interface AuthContextType {
   user: User | null;
@@ -13,14 +13,14 @@ interface AuthContextType {
   mockUsers: User[]; 
   mockVidas: Vida[];
   mockCellGroups: CellGroup[];
-  mockOfferings: StoredOffering[]; // Novo
+  mockOfferings: StoredOffering[];
   updateMockVida: (updatedVida: Vida) => void;
   addMockVida: (newVida: Vida) => void;
-  updateMockCellGroup: (updatedCG: CellGroup) => void;
+  updateMockCellGroup: (updatedCG: CellGroup, oldLiderVidaId?: string) => void; // Adicionado oldLiderVidaId opcional
   addMockCellGroup: (newCG: CellGroup) => void;
   addMockUser: (newUser: User) => void;
   updateMockUser: (updatedUser: User) => void;
-  addMockOffering: (newOffering: OfferingFormValues) => void; // Novo
+  addMockOffering: (newOffering: OfferingFormValues) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +31,7 @@ const initialMockVidas: Vida[] = [
   { id: 'vida-ana', nomeCompleto: 'Ana Silva (Membro)', dataNascimento: new Date(1990, 5, 15), idCelula: 'celula-discipulos-001', nomeCelula: 'Discípulos de Cristo', geracaoCelula: 'G1', status: 'membro', createdAt: new Date() },
   { id: 'vida-bruno', nomeCompleto: 'Bruno Costa (Outra Célula)', dataNascimento: new Date(1985, 8, 22), idCelula: 'celula-leoes-002', nomeCelula: 'Leões de Judá', geracaoCelula: 'G2', status: 'membro', createdAt: new Date() },
   { id: 'vida-carla', nomeCompleto: 'Carla Santos (Membro)', dataNascimento: new Date(1995, 10, 5), idCelula: 'celula-leoes-002', nomeCelula: 'Leões de Judá', geracaoCelula: 'G2', status: 'membro', createdAt: new Date() },
+  { id: 'vida-sem-celula', nomeCompleto: 'Mariana Dias (Sem Célula)', dataNascimento: new Date(1992, 7, 12), telefone: '(11) 98888-7777', idCelula: '', nomeCelula: '', geracaoCelula: '', status: 'membro', createdAt: new Date() },
 ];
 
 // Mock initial Cell Groups
@@ -56,6 +57,18 @@ const initialMockCellGroups: CellGroup[] = [
       geracao: 'G2',
       meetingStatus: 'agendada',
       lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 7)) 
+    },
+     {
+      id: 'celula-nova-geracao-003',
+      name: 'Nova Geração',
+      address: 'Praça da Alegria, 789',
+      meetingDay: 'Terça-feira',
+      meetingTime: '18:00',
+      geracao: 'G3',
+      liderVidaId: undefined, // Sem líder inicialmente
+      liderNome: undefined,
+      meetingStatus: 'agendada',
+      lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 1)) 
     },
 ];
 
@@ -97,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [vidasData, setVidasData] = useState<Vida[]>(initialMockVidas);
   const [cellGroupsData, setCellGroupsData] = useState<CellGroup[]>(initialMockCellGroups);
   const [usersData, setUsersData] = useState<User[]>(initialMockUsers);
-  const [offeringsData, setOfferingsData] = useState<StoredOffering[]>(initialMockOfferings); // Novo estado para ofertas
+  const [offeringsData, setOfferingsData] = useState<StoredOffering[]>(initialMockOfferings);
 
   const loginAs = useCallback((role: Role) => {
     if (role === 'missionario') {
@@ -112,51 +125,172 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  // Funções para Vidas
   const updateMockVida = useCallback((updatedVida: Vida) => {
     setVidasData(prev => prev.map(v => v.id === updatedVida.id ? updatedVida : v));
-  }, []);
+    
+    // Se a vida atualizada é um líder, garantir que o CellGroup e o User associado reflitam isso.
+    if (updatedVida.status === 'lider_ativo' || updatedVida.status === 'lider_em_treinamento') {
+      if (updatedVida.idCelula) {
+        setCellGroupsData(prevCGs => prevCGs.map(cg => {
+          if (cg.id === updatedVida.idCelula) {
+            return { ...cg, liderVidaId: updatedVida.id, liderNome: updatedVida.nomeCompleto };
+          }
+          // Se esta vida era líder de outra célula, desvinculá-la (simplificado)
+          if (cg.liderVidaId === updatedVida.id && cg.id !== updatedVida.idCelula) {
+            return { ...cg, liderVidaId: undefined, liderNome: undefined };
+          }
+          return cg;
+        }));
+      }
+      setUsersData(prevUsers => prevUsers.map(u => {
+        if (u.vidaId === updatedVida.id) {
+          const updatedAuthUser = {
+            ...u,
+            role: 'lider_de_celula' as Role,
+            cellGroupId: updatedVida.idCelula || undefined,
+            cellGroupName: updatedVida.nomeCelula || undefined,
+            name: updatedVida.nomeCompleto, // Sincronizar nome
+          };
+          if (user && user.id === u.id) {
+            setUser(updatedAuthUser);
+          }
+          return updatedAuthUser;
+        }
+        return u;
+      }));
+    } else if (updatedVida.status === 'membro') { // Se a vida se tornou membro
+       // Desvincular de qualquer liderança de célula
+        setCellGroupsData(prevCGs => prevCGs.map(cg => {
+          if (cg.liderVidaId === updatedVida.id) {
+            return { ...cg, liderVidaId: undefined, liderNome: undefined };
+          }
+          return cg;
+        }));
+        // Atualizar o User associado, se houver, para não ser mais líder
+        setUsersData(prevUsers => prevUsers.map(u => {
+          if (u.vidaId === updatedVida.id && u.role === 'lider_de_celula') {
+             const updatedAuthUser = {
+                ...u,
+                role: 'missionario' as Role, // Ou algum status padrão, ou remover cellGroupId/Name
+                cellGroupId: undefined,
+                cellGroupName: undefined,
+             };
+             // Por simplicidade, não redefinimos o papel para 'missionario' a menos que seja o comportamento desejado.
+             // Idealmente, o User seria apenas desvinculado da célula como líder.
+             // Para este mock, vamos apenas desvincular da célula no User.
+             if (user && user.id === u.id) {
+                setUser(prevUser => prevUser ? {...prevUser, cellGroupId: undefined, cellGroupName: undefined } : null);
+             }
+             return {...u, cellGroupId: undefined, cellGroupName: undefined};
+          }
+          return u;
+        }));
+    }
+  }, [user]);
 
   const addMockVida = useCallback((newVida: Vida) => {
     setVidasData(prev => [newVida, ...prev]);
   }, []);
 
-  // Funções para Grupos de Células
-  const updateMockCellGroup = useCallback((updatedCG: CellGroup) => {
-    setCellGroupsData(prev => {
-      const newGroups = prev.map(cg => cg.id === updatedCG.id ? updatedCG : cg);
+  const updateMockCellGroup = useCallback((updatedCG: CellGroup, oldLiderVidaId?: string) => {
+    setCellGroupsData(prevCGs => {
+      const newGroups = prevCGs.map(cg => cg.id === updatedCG.id ? updatedCG : cg);
+      // Atualiza o nome da célula do líder logado, se aplicável
       if (user?.role === 'lider_de_celula' && user.cellGroupId === updatedCG.id && user.cellGroupName !== updatedCG.name) {
         setUser(prevUser => prevUser ? {...prevUser, cellGroupName: updatedCG.name} : null);
       }
       return newGroups;
     });
+
+    if (updatedCG.liderVidaId) { // Se um novo líder foi atribuído à célula
+      setVidasData(prevVidas => prevVidas.map(v => {
+        if (v.id === updatedCG.liderVidaId) { // Atualiza a Vida do novo líder
+          return {
+            ...v,
+            idCelula: updatedCG.id,
+            nomeCelula: updatedCG.name,
+            geracaoCelula: updatedCG.geracao,
+            status: v.status !== 'lider_ativo' && v.status !== 'lider_em_treinamento' ? 'lider_ativo' as VidaStatus : v.status, // Promove a líder ativo se era membro
+          };
+        }
+        return v;
+      }));
+      setUsersData(prevUsers => prevUsers.map(u => {
+        if (u.vidaId === updatedCG.liderVidaId) { // Atualiza o User do novo líder
+          const updatedAuthUser = {
+            ...u,
+            role: 'lider_de_celula' as Role,
+            cellGroupId: updatedCG.id,
+            cellGroupName: updatedCG.name,
+            name: updatedCG.liderNome || u.name, // Atualiza nome do user com nome do lider
+          };
+          if (user && user.id === u.id) {
+            setUser(updatedAuthUser);
+          }
+          return updatedAuthUser;
+        }
+        return u;
+      }));
+    }
+
+    // Se havia um líder antigo e ele é diferente do novo, desvincula o antigo da célula.
+    // A página `lideres/novo` já tem uma lógica mais completa para promoção/designação.
+    // Esta parte em `updateMockCellGroup` é mais para quando um admin edita uma célula diretamente.
+    if (oldLiderVidaId && oldLiderVidaId !== updatedCG.liderVidaId) {
+        setVidasData(prevVidas => prevVidas.map(v => {
+            if (v.id === oldLiderVidaId && v.idCelula === updatedCG.id) {
+                // Apenas desvincula desta célula. Não muda status ou role globalmente aqui.
+                // Isso pode ser refinado se um líder só puder liderar uma célula.
+                return { ...v, idCelula: '', nomeCelula: '', geracaoCelula: '' };
+            }
+            return v;
+        }));
+        setUsersData(prevUsers => prevUsers.map(u => {
+            if (u.vidaId === oldLiderVidaId && u.cellGroupId === updatedCG.id) {
+                 const updatedAuthUser = { ...u, cellGroupId: undefined, cellGroupName: undefined };
+                 // Se o usuário atual é o líder antigo, atualiza seu estado no AuthContext
+                 if (user && user.id === u.id) {
+                    setUser(updatedAuthUser);
+                 }
+                return updatedAuthUser;
+            }
+            return u;
+        }));
+    }
+
   }, [user]);
 
   const addMockCellGroup = useCallback((newCG: CellGroup) => {
     setCellGroupsData(prev => [newCG, ...prev]);
   }, []);
 
-  // Funções para Usuários
   const addMockUser = useCallback((newUser: User) => {
     setUsersData(prev => {
-      const existingUserIndex = prev.findIndex(u => u.vidaId && u.vidaId === newUser.vidaId);
+      const existingUserIndex = prev.findIndex(u => u.vidaId && newUser.vidaId && u.vidaId === newUser.vidaId);
       if (existingUserIndex !== -1) {
         const updatedUsers = [...prev];
         updatedUsers[existingUserIndex] = newUser;
+        if (user && user.id === updatedUsers[existingUserIndex].id) { // Se o usuário logado foi atualizado
+          setUser(newUser);
+        }
         return updatedUsers;
       }
       return [newUser, ...prev];
     });
-  }, []);
-
-  const updateMockUser = useCallback((updatedUser: User) => {
-    setUsersData(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-    if (user && user.id === updatedUser.id) {
-      setUser(updatedUser);
-    }
   }, [user]);
 
-  // Função para Ofertas
+  const updateMockUser = useCallback((updatedUser: User) => {
+    setUsersData(prev => prev.map(u => {
+      if (u.id === updatedUser.id) {
+        if (user && user.id === updatedUser.id) { // Se o usuário logado foi atualizado
+          setUser(updatedUser);
+        }
+        return updatedUser;
+      }
+      return u;
+    }));
+  }, [user]);
+
   const addMockOffering = useCallback((newOfferingData: OfferingFormValues) => {
     const newOffering: StoredOffering = {
       id: `off-${Date.now()}`,
@@ -164,7 +298,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setOfferingsData(prev => [newOffering, ...prev]);
   }, []);
-
 
   const value = useMemo(() => ({
     user,
@@ -174,15 +307,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mockUsers: usersData, 
     mockVidas: vidasData,
     mockCellGroups: cellGroupsData,
-    mockOfferings: offeringsData, // Expor mockOfferings
+    mockOfferings: offeringsData,
     updateMockVida,
     addMockVida,
     updateMockCellGroup,
     addMockCellGroup,
     addMockUser,
     updateMockUser,
-    addMockOffering, // Expor addMockOffering
+    addMockOffering,
   }), [user, loginAs, logout, usersData, vidasData, cellGroupsData, offeringsData, updateMockVida, addMockVida, updateMockCellGroup, addMockCellGroup, addMockUser, updateMockUser, addMockOffering]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+

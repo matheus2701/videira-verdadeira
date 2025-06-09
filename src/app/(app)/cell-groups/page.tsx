@@ -26,7 +26,7 @@ const cellGroupSchema = z.object({
   meetingDay: z.string({ required_error: "Selecione o dia da reunião." }),
   meetingTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Horário inválido (HH:MM)." }),
   geracao: z.string().optional(),
-  liderVidaId: z.string().optional(),
+  liderVidaId: z.string().optional(), // Permitir string vazia para "Nenhum"
   meetingStatus: z.enum(['agendada', 'aconteceu', 'nao_aconteceu_com_aviso', 'nao_aconteceu_sem_aviso', 'cancelada_com_aviso']).optional(),
   meetingStatusReason: z.string().optional(),
 });
@@ -55,7 +55,7 @@ export default function CellGroupsPage() {
       meetingDay: undefined,
       meetingTime: "",
       geracao: "",
-      liderVidaId: undefined,
+      liderVidaId: "", // Default para string vazia
       meetingStatus: "agendada",
       meetingStatusReason: "",
     },
@@ -78,14 +78,14 @@ export default function CellGroupsPage() {
         meetingDay: editingCellGroup.meetingDay,
         meetingTime: editingCellGroup.meetingTime,
         geracao: editingCellGroup.geracao,
-        liderVidaId: editingCellGroup.liderVidaId,
+        liderVidaId: editingCellGroup.liderVidaId || "", // Garante string vazia se undefined
         meetingStatus: editingCellGroup.meetingStatus || "agendada",
         meetingStatusReason: editingCellGroup.meetingStatusReason,
       });
       setIsDialogOpen(true);
     } else {
       form.reset({
-        name: "", address: "", meetingDay: undefined, meetingTime: "", geracao: "", liderVidaId: undefined, meetingStatus: "agendada", meetingStatusReason: "",
+        name: "", address: "", meetingDay: undefined, meetingTime: "", geracao: "", liderVidaId: "", meetingStatus: "agendada", meetingStatusReason: "",
       });
     }
   }, [editingCellGroup, form]);
@@ -93,30 +93,41 @@ export default function CellGroupsPage() {
 
   function onSubmit(values: CellGroupFormValues) {
     const liderSelecionado = mockVidas.find(v => v.id === values.liderVidaId && (v.status === 'lider_ativo' || v.status === 'lider_em_treinamento'));
+    const oldLiderVidaId = editingCellGroup?.liderVidaId;
     
     if (editingCellGroup) {
       const updatedCg: CellGroup = { 
         ...editingCellGroup, 
         ...values,
-        liderNome: liderSelecionado?.nomeCompleto,
-        meetingStatus: values.meetingStatus as CellMeetingStatus,
-        lastStatusUpdate: new Date(),
+        liderVidaId: liderSelecionado?.id || undefined, // Salva undefined se nenhum líder
+        liderNome: liderSelecionado?.nomeCompleto || undefined,
+        meetingStatus: values.meetingStatus as CellMeetingStatus, // Preserva o status atual ou o novo
+        lastStatusUpdate: values.meetingStatus !== editingCellGroup.meetingStatus ? new Date() : editingCellGroup.lastStatusUpdate, // Atualiza data se status mudou
       };
-      updateMockCellGroup(updatedCg);
+      updateMockCellGroup(updatedCg, oldLiderVidaId);
       toast({ title: "Sucesso!", description: "Grupo de Células atualizado." });
     } else {
       const newCellGroup: CellGroup = {
         id: `cg-${Date.now()}`,
-        ...values,
         name: values.name,
         address: values.address,
         meetingDay: values.meetingDay,
         meetingTime: values.meetingTime,
-        liderNome: liderSelecionado?.nomeCompleto,
+        geracao: values.geracao,
+        liderVidaId: liderSelecionado?.id || undefined,
+        liderNome: liderSelecionado?.nomeCompleto || undefined,
         meetingStatus: values.meetingStatus as CellMeetingStatus,
-        lastStatusUpdate: new Date(),
+        lastStatusUpdate: new Date(), // Nova célula, nova data de atualização de status
       };
       addMockCellGroup(newCellGroup);
+      // Se um líder foi selecionado para uma nova célula, updateMockCellGroup já deve ter lidado com a vida e user.
+      // Mas aqui estamos chamando addMockCellGroup, então o AuthContext precisaria de lógica similar em addMockCellGroup
+      // ou o updateMockCellGroup deveria ser chamado após add.
+      // Para manter simples, e como o foco da refatoração do AuthContext foi em updateMockCellGroup:
+      if (liderSelecionado) {
+         // Simula uma chamada a update para forçar as atualizações na Vida e User do líder
+         updateMockCellGroup(newCellGroup);
+      }
       toast({ title: "Sucesso!", description: "Grupo de Células adicionado." });
     }
     setIsDialogOpen(false);
@@ -153,8 +164,8 @@ export default function CellGroupsPage() {
         {user?.role === 'missionario' && (
           <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setIsDialogOpen(isOpen); if (!isOpen) setEditingCellGroup(null); }}>
             <DialogTrigger asChild>
-              <Button onClick={() => { setEditingCellGroup(null); setIsDialogOpen(true); }}>
-                <PlusCircle className="mr-2 h-4 w-4" /> {editingCellGroup ? "Editar Grupo" : "Adicionar Grupo"}
+              <Button onClick={() => { setEditingCellGroup(null); form.reset(); setIsDialogOpen(true); }}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Grupo
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
@@ -170,7 +181,7 @@ export default function CellGroupsPage() {
                   <FormField control={form.control} name="liderVidaId" render={({ field }) => (
                     <FormItem>
                       <RHFFormLabel>Líder da Célula (Opcional)</RHFFormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecione um líder (status Ativo/Treinamento)" /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value="">Nenhum</SelectItem>
