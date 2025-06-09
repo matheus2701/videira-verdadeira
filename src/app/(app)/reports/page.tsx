@@ -9,27 +9,64 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, BarChartBig, Search, ListFilter, Activity } from "lucide-react";
-import type { CellGroup, CellMeetingStatus } from '@/types';
+import { ShieldAlert, BarChartBig, Activity, HandCoins } from "lucide-react"; // Adicionado HandCoins
+import type { CellGroup, CellMeetingStatus, Vida, StoredOffering } from '@/types'; // Adicionado Vida, StoredOffering
 import { cellMeetingStatusOptions } from '@/types';
-import { format } from 'date-fns';
+import { format, getYear, getMonth, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
+import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 interface FormattedCellGroup extends CellGroup {
   formattedLastStatusUpdate?: string;
   statusLabel?: string;
 }
 
-export default function ReportsPage() {
-  const { user, mockCellGroups } = useAuth();
+const vidaGrowthChartConfig = {
+  count: {
+    label: "Novas Vidas",
+    color: "hsl(var(--chart-1))",
+  },
+} satisfies ChartConfig;
 
+const offeringChartConfig = {
+  totalAmount: {
+    label: "Total Arrecadado",
+    color: "hsl(var(--chart-2))", // Usar uma cor diferente
+  },
+} satisfies ChartConfig;
+
+const reportMonths = [
+  { value: "todos", label: "Todos os Meses" },
+  ...Array.from({ length: 12 }, (_, i) => ({
+    value: (i + 1).toString(),
+    label: format(new Date(2000, i, 1), "MMMM", { locale: ptBR }), // Usar um ano fixo para label do mês
+  }))
+];
+
+
+export default function ReportsPage() {
+  const { user, mockCellGroups, mockVidas, mockOfferings } = useAuth();
+
+  // Estados para Relatório de Status das Células
   const [filterStatus, setFilterStatus] = useState<CellMeetingStatus | 'todos'>('todos');
   const [filterLider, setFilterLider] = useState('');
   const [filterGeracao, setFilterGeracao] = useState('');
-
   const [formattedCellGroups, setFormattedCellGroups] = useState<FormattedCellGroup[]>([]);
 
+  // Estados para Relatório de Crescimento de Vidas
+  const [selectedGrowthYear, setSelectedGrowthYear] = useState<string>(() => getYear(new Date()).toString());
+  const [availableGrowthYears, setAvailableGrowthYears] = useState<string[]>([]);
+
+  // Estados para Relatório Financeiro de Ofertas
+  const [selectedReportOfferingYear, setSelectedReportOfferingYear] = useState<string>(() => getYear(new Date()).toString());
+  const [selectedReportOfferingMonth, setSelectedReportOfferingMonth] = useState<string>("todos");
+  const [availableReportOfferingYears, setAvailableReportOfferingYears] = useState<string[]>([]);
+  const [totalOfferingsForPeriodDisplay, setTotalOfferingsForPeriodDisplay] = useState<string | null>(null);
+
+
+  // Lógica para Relatório de Status das Células
   const filteredAndSortedCellGroups = useMemo(() => {
     let groups = mockCellGroups
       .map(cg => ({
@@ -42,8 +79,6 @@ export default function ReportsPage() {
         const geracaoMatch = filterGeracao === '' || (cg.geracao || '').toLowerCase().includes(filterGeracao.toLowerCase());
         return statusMatch && liderMatch && geracaoMatch;
       });
-    
-    // Sort by cell name
     groups.sort((a, b) => a.name.localeCompare(b.name));
     return groups;
   }, [mockCellGroups, filterStatus, filterLider, filterGeracao]);
@@ -51,12 +86,99 @@ export default function ReportsPage() {
   useEffect(() => {
     const groupsWithFormattedDates = filteredAndSortedCellGroups.map(cg => ({
       ...cg,
-      formattedLastStatusUpdate: cg.lastStatusUpdate 
+      formattedLastStatusUpdate: cg.lastStatusUpdate
         ? format(new Date(cg.lastStatusUpdate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
         : 'N/A',
     }));
     setFormattedCellGroups(groupsWithFormattedDates);
   }, [filteredAndSortedCellGroups]);
+
+  // Lógica para Relatório de Crescimento de Vidas
+  useEffect(() => {
+    if (mockVidas.length > 0) {
+      const years = new Set(mockVidas.map(vida => getYear(new Date(vida.createdAt)).toString()));
+      const sortedYears = Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
+      setAvailableGrowthYears(sortedYears);
+      if (!sortedYears.includes(selectedGrowthYear) && sortedYears.length > 0) {
+        setSelectedGrowthYear(sortedYears[0]);
+      } else if (sortedYears.length === 0) {
+        setSelectedGrowthYear(getYear(new Date()).toString());
+      }
+    } else {
+        setAvailableGrowthYears([getYear(new Date()).toString()]);
+    }
+  }, [mockVidas, selectedGrowthYear]);
+
+  const vidasGrowthChartData = useMemo(() => {
+    const year = parseInt(selectedGrowthYear);
+    const monthlyCounts = Array(12).fill(0).map((_, index) => ({
+      month: format(new Date(year, index), "MMM", { locale: ptBR }),
+      count: 0,
+    }));
+
+    mockVidas.forEach(vida => {
+      const vidaDate = new Date(vida.createdAt);
+      if (getYear(vidaDate) === year) {
+        const monthIndex = getMonth(vidaDate);
+        monthlyCounts[monthIndex].count++;
+      }
+    });
+    return monthlyCounts;
+  }, [mockVidas, selectedGrowthYear]);
+
+  // Lógica para Relatório Financeiro de Ofertas
+  useEffect(() => {
+    if (mockOfferings.length > 0) {
+      const years = new Set(mockOfferings.map(offering => getYear(new Date(offering.date)).toString()));
+      const sortedYears = Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
+      setAvailableReportOfferingYears(sortedYears);
+      if (!sortedYears.includes(selectedReportOfferingYear) && sortedYears.length > 0) {
+        setSelectedReportOfferingYear(sortedYears[0]);
+      } else if (sortedYears.length === 0) {
+         setSelectedReportOfferingYear(getYear(new Date()).toString());
+      }
+    } else {
+        setAvailableReportOfferingYears([getYear(new Date()).toString()]);
+    }
+  }, [mockOfferings, selectedReportOfferingYear]);
+  
+  const filteredReportOfferings = useMemo(() => {
+    return mockOfferings.filter(offering => {
+      const offeringDate = new Date(offering.date);
+      const yearMatch = getYear(offeringDate) === parseInt(selectedReportOfferingYear);
+      const monthMatch = selectedReportOfferingMonth === "todos" || (getMonth(offeringDate) + 1) === parseInt(selectedReportOfferingMonth);
+      return yearMatch && monthMatch;
+    });
+  }, [mockOfferings, selectedReportOfferingYear, selectedReportOfferingMonth]);
+
+  const reportOfferingChartData = useMemo(() => {
+    const year = parseInt(selectedReportOfferingYear);
+    const monthlyTotals = Array(12).fill(0).map((_, index) => ({
+      month: format(new Date(year, index), "MMM", { locale: ptBR }),
+      totalAmount: 0,
+    }));
+
+    filteredReportOfferings.forEach(offering => {
+        const offeringDate = new Date(offering.date);
+        if (getYear(offeringDate) === year) { // Double check year, though filteredReportOfferings should already be filtered
+            const monthIndex = getMonth(offeringDate);
+            monthlyTotals[monthIndex].totalAmount += offering.amount;
+        }
+    });
+    // Filter out months with no offerings IF selectedReportOfferingMonth is not "todos"
+    // For "todos", we show all months of the year, even if zero.
+    if(selectedReportOfferingMonth !== "todos") {
+        const singleMonthIndex = parseInt(selectedReportOfferingMonth) -1;
+        return [monthlyTotals[singleMonthIndex]];
+    }
+
+    return monthlyTotals;
+  }, [filteredReportOfferings, selectedReportOfferingYear, selectedReportOfferingMonth]);
+  
+  useEffect(() => {
+    const total = filteredReportOfferings.reduce((sum, o) => sum + o.amount, 0);
+    setTotalOfferingsForPeriodDisplay(total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+  }, [filteredReportOfferings]);
 
 
   if (user?.role !== 'missionario') {
@@ -65,8 +187,8 @@ export default function ReportsPage() {
         <ShieldAlert className="w-16 h-16 text-destructive mb-4" />
         <h1 className="font-headline text-3xl font-semibold mb-2">Acesso Negado</h1>
         <p className="text-muted-foreground text-center">
-          {user?.role === 'lider_de_celula' 
-            ? "Líderes de Célula não têm acesso à seção de relatórios gerais." 
+          {user?.role === 'lider_de_celula'
+            ? "Líderes de Célula não têm acesso à seção de relatórios gerais."
             : "Você não tem permissão para acessar esta página."
           }
         </p>
@@ -78,7 +200,6 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="font-headline text-3xl font-semibold">Relatórios da Igreja</h1>
-         {/* Could add a general "Export" button here in future */}
       </div>
 
       <Card>
@@ -88,7 +209,7 @@ export default function ReportsPage() {
             <CardTitle className="font-headline text-xl">Relatório de Status das Células</CardTitle>
           </div>
           <CardDescription className="font-body">
-            Visualize a situação atual de todas as células, incluindo o status da última reunião e informações de liderança.
+            Visualize a situação atual de todas as células.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -96,9 +217,7 @@ export default function ReportsPage() {
             <div>
               <Label htmlFor="filter-status" className="font-body">Status da Reunião</Label>
               <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as CellMeetingStatus | 'todos')}>
-                <SelectTrigger id="filter-status">
-                  <SelectValue placeholder="Filtrar por status" />
-                </SelectTrigger>
+                <SelectTrigger id="filter-status"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os Status</SelectItem>
                   {cellMeetingStatusOptions.map(option => (
@@ -109,32 +228,17 @@ export default function ReportsPage() {
             </div>
             <div>
               <Label htmlFor="filter-lider" className="font-body">Nome do Líder</Label>
-              <Input 
-                id="filter-lider" 
-                placeholder="Buscar por líder..." 
-                value={filterLider} 
-                onChange={(e) => setFilterLider(e.target.value)} 
-              />
+              <Input id="filter-lider" placeholder="Buscar por líder..." value={filterLider} onChange={(e) => setFilterLider(e.target.value)} />
             </div>
             <div>
               <Label htmlFor="filter-geracao" className="font-body">Geração da Célula</Label>
-              <Input 
-                id="filter-geracao" 
-                placeholder="Buscar por geração..." 
-                value={filterGeracao} 
-                onChange={(e) => setFilterGeracao(e.target.value)}
-              />
+              <Input id="filter-geracao" placeholder="Buscar por geração..." value={filterGeracao} onChange={(e) => setFilterGeracao(e.target.value)} />
             </div>
           </div>
-
           {formattedCellGroups.length === 0 && !mockCellGroups.length ? (
-             <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-                Nenhuma célula cadastrada no sistema.
-             </div>
+             <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">Nenhuma célula cadastrada.</div>
           ) : formattedCellGroups.length === 0 ? (
-             <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-                Nenhuma célula encontrada com os filtros aplicados.
-             </div>
+             <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">Nenhuma célula encontrada.</div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -162,44 +266,153 @@ export default function ReportsPage() {
                           cg.meetingStatus === 'agendada' ? 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-200' :
                           cg.meetingStatus === 'nao_aconteceu_com_aviso' || cg.meetingStatus === 'nao_aconteceu_sem_aviso' || cg.meetingStatus === 'cancelada_com_aviso' ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200' :
                           'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
-                        }`}>
-                          {cg.statusLabel}
-                        </span>
+                        }`}>{cg.statusLabel}</span>
                       </TableCell>
                       <TableCell className="text-xs max-w-xs truncate">{cg.meetingStatusReason || <span className="italic text-muted-foreground">N/A</span>}</TableCell>
-                      <TableCell>
-                        {cg.formattedLastStatusUpdate ? cg.formattedLastStatusUpdate : <Skeleton className="h-4 w-[100px]" />}
-                      </TableCell>
+                      <TableCell>{cg.formattedLastStatusUpdate ? cg.formattedLastStatusUpdate : <Skeleton className="h-4 w-[100px]" />}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
-                <TableCaption>
-                  Exibindo {formattedCellGroups.length} de {mockCellGroups.length} célula(s).
-                </TableCaption>
+                <TableCaption>Exibindo {formattedCellGroups.length} de {mockCellGroups.length} célula(s).</TableCaption>
               </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+            <div className="flex items-center gap-2">
+                <BarChartBig className="h-6 w-6 text-primary" />
+                <CardTitle className="font-headline text-xl">Relatório de Crescimento de Vidas</CardTitle>
+            </div>
+          <CardDescription className="font-body">Acompanhe o número de novas vidas ao longo do tempo.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="w-full max-w-xs">
+            <Label htmlFor="growth-year-filter" className="font-body">Selecionar Ano</Label>
+            <Select value={selectedGrowthYear} onValueChange={setSelectedGrowthYear} disabled={availableGrowthYears.length === 0}>
+              <SelectTrigger id="growth-year-filter">
+                <SelectValue placeholder="Selecione o ano" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableGrowthYears.length > 0 ? availableGrowthYears.map(year => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                )) : <SelectItem value={getYear(new Date()).toString()} disabled>Nenhum dado</SelectItem>}
+              </SelectContent>
+            </Select>
+          </div>
+          {mockVidas.length === 0 ? (
+            <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">Nenhuma vida cadastrada.</div>
+          ) : vidasGrowthChartData.every(d => d.count === 0) ? (
+            <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">Nenhuma nova vida registrada para {selectedGrowthYear}.</div>
+          ) : (
+            <div className="h-[350px] w-full">
+              <ChartContainer config={vidaGrowthChartConfig} className="h-full w-full">
+                <BarChart accessibilityLayer data={vidasGrowthChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} tickMargin={8} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend />
+                  <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+                </BarChart>
+              </ChartContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+            <div className="flex items-center gap-2">
+                <HandCoins className="h-6 w-6 text-primary" />
+                <CardTitle className="font-headline text-xl">Relatório Financeiro de Ofertas</CardTitle>
+            </div>
+          <CardDescription className="font-body">Visualize o total de ofertas por período.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+            <div>
+              <Label htmlFor="offering-year-filter" className="font-body">Ano</Label>
+              <Select value={selectedReportOfferingYear} onValueChange={setSelectedReportOfferingYear} disabled={availableReportOfferingYears.length === 0}>
+                <SelectTrigger id="offering-year-filter">
+                  <SelectValue placeholder="Selecione o ano" />
+                </SelectTrigger>
+                <SelectContent>
+                    {availableReportOfferingYears.length > 0 ? availableReportOfferingYears.map(year => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                    )) : <SelectItem value={getYear(new Date()).toString()} disabled>Nenhum dado</SelectItem>}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="offering-month-filter" className="font-body">Mês</Label>
+              <Select value={selectedReportOfferingMonth} onValueChange={setSelectedReportOfferingMonth}>
+                <SelectTrigger id="offering-month-filter">
+                  <SelectValue placeholder="Selecione o mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reportMonths.map(month => (
+                    <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="p-4 border rounded-lg">
+            <h3 className="font-headline text-lg">Total Arrecadado no Período</h3>
+            {totalOfferingsForPeriodDisplay === null ? (
+                <Skeleton className="h-8 w-32 mt-1" />
+            ) : (
+                <p className="text-2xl font-bold font-headline text-primary mt-1">{totalOfferingsForPeriodDisplay}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+                {selectedReportOfferingMonth === "todos" ? `Ano de ${selectedReportOfferingYear}` : `${reportMonths.find(m=>m.value === selectedReportOfferingMonth)?.label} de ${selectedReportOfferingYear}`}
+            </p>
+          </div>
+
+          {mockOfferings.length === 0 ? (
+            <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">Nenhuma oferta registrada.</div>
+          ) : reportOfferingChartData.every(d => d.totalAmount === 0) && filteredReportOfferings.length === 0 ? (
+             <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
+                Nenhuma oferta registrada para {selectedReportOfferingMonth === "todos" ? `o ano de ${selectedReportOfferingYear}` : `${reportMonths.find(m=>m.value === selectedReportOfferingMonth)?.label} de ${selectedReportOfferingYear}`}.
+            </div>
+          ) : (
+            <div className="h-[350px] w-full">
+              <ChartContainer config={offeringChartConfig} className="h-full w-full">
+                <BarChart accessibilityLayer data={reportOfferingChartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis 
+                    tickLine={false} 
+                    axisLine={false} 
+                    tickMargin={8} 
+                    tickFormatter={(value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                  />
+                  <ChartTooltip 
+                    content={<ChartTooltipContent 
+                        formatter={(value, name, props) => {
+                            return (
+                                <div className="flex flex-col">
+                                   <span className="text-muted-foreground">{props.payload.month}</span>
+                                   <span className="font-bold">{Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                            )
+                        }}
+                    />}
+                   />
+                  <Legend />
+                  <Bar dataKey="totalAmount" fill="var(--color-totalAmount)" radius={4} name="Total Arrecadado" />
+                </BarChart>
+              </ChartContainer>
             </div>
           )}
         </CardContent>
          <CardFooter>
             <p className="text-xs text-muted-foreground font-body">
-              Este relatório fornece uma visão geral do status de atividade das células.
+              Este relatório detalha as ofertas recebidas no período selecionado.
             </p>
         </CardFooter>
-      </Card>
-      
-      {/* Placeholder for future reports */}
-      <Card className="opacity-50">
-        <CardHeader>
-          <CardTitle className="font-headline flex items-center gap-2"><BarChartBig className="h-5 w-5 text-primary/70" />Relatório de Crescimento de Vidas</CardTitle>
-          <CardDescription className="font-body">
-            (Em Desenvolvimento) Acompanhe o número de novas vidas ao longo do tempo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[150px] p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground">
-            Gráfico de crescimento de vidas será exibido aqui.
-          </div>
-        </CardContent>
       </Card>
 
     </div>
