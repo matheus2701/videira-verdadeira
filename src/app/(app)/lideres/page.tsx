@@ -1,16 +1,25 @@
 
 'use client';
 
+import { useMemo } from "react"; // Adicionado useMemo
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, UserCog, PlusCircle, Users } from "lucide-react";
+import { ShieldAlert, UserCog, PlusCircle, Users, ToggleLeft, ToggleRight } from "lucide-react";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
-import type { Vida } from "@/types";
+import type { Vida, User as AuthUser } from "@/types";
+import { useToast } from "@/hooks/use-toast";
+
+interface LiderComUserStatus extends Vida {
+  userId?: string;
+  userIsActive?: boolean;
+  userEmail?: string;
+}
 
 export default function LideresPage() {
-  const { user, mockVidas } = useAuth();
+  const { user, mockVidas, mockUsers, toggleUserActiveStatus } = useAuth();
+  const { toast } = useToast();
 
   if (user?.role !== 'missionario') {
     return (
@@ -24,9 +33,36 @@ export default function LideresPage() {
     );
   }
 
-  const lideresList: Vida[] = mockVidas.filter(
-    (v) => v.status === 'lider_ativo' || v.status === 'lider_em_treinamento'
-  );
+  const lideresListComUserStatus: LiderComUserStatus[] = useMemo(() => {
+    return mockVidas
+      .filter((v) => v.status === 'lider_ativo' || v.status === 'lider_em_treinamento')
+      .map(lider => {
+        const userAccount = mockUsers.find(u => u.vidaId === lider.id);
+        return {
+          ...lider,
+          userId: userAccount?.id,
+          userIsActive: userAccount?.isActive,
+          userEmail: userAccount?.email,
+        };
+      });
+  }, [mockVidas, mockUsers]);
+
+  const handleToggleUserStatus = (leaderName: string, userId?: string) => {
+    if (!userId) {
+      toast({
+        title: "Erro",
+        description: `Usuário não encontrado para ${leaderName}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    toggleUserActiveStatus(userId);
+    const updatedUser = mockUsers.find(u => u.id === userId);
+    toast({
+      title: "Status de Acesso Alterado",
+      description: `O acesso para ${leaderName} (${updatedUser?.email}) foi ${updatedUser?.isActive ? 'ativado' : 'inativado'}.`,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -45,11 +81,11 @@ export default function LideresPage() {
         <CardHeader>
           <CardTitle className="font-headline">Listagem de Líderes</CardTitle>
           <CardDescription className="font-body">
-            Visualize os líderes ativos e em treinamento e as células que lideram.
+            Visualize os líderes ativos e em treinamento, as células que lideram e gerencie o status de acesso de suas contas.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {lideresList.length === 0 ? (
+          {lideresListComUserStatus.length === 0 ? (
             <div className="mt-8 p-10 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center text-muted-foreground space-y-4">
               <Users className="w-16 h-16 text-primary/70" />
               <p className="text-lg font-medium font-headline">Nenhum Líder Cadastrado</p>
@@ -63,17 +99,19 @@ export default function LideresPage() {
                 <TableRow>
                   <TableHead>Nome do Líder</TableHead>
                   <TableHead>Célula Liderada</TableHead>
-                  <TableHead>Geração da Célula</TableHead>
-                  <TableHead>Status do Líder</TableHead>
-                  <TableHead>Contato</TableHead>
+                  <TableHead>Status Líder (Vida)</TableHead>
+                  <TableHead>Status Acesso (Login)</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lideresList.map((lider) => (
+                {lideresListComUserStatus.map((lider) => (
                   <TableRow key={lider.id}>
-                    <TableCell className="font-medium">{lider.nomeCompleto}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>{lider.nomeCompleto}</div>
+                      {lider.userEmail && <div className="text-xs text-muted-foreground">{lider.userEmail}</div>}
+                    </TableCell>
                     <TableCell>{lider.nomeCelula || <span className="text-muted-foreground italic">Não especificada</span>}</TableCell>
-                    <TableCell>{lider.geracaoCelula || <span className="text-muted-foreground italic">N/A</span>}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                         lider.status === 'lider_ativo' ? 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100' :
@@ -83,12 +121,35 @@ export default function LideresPage() {
                         {lider.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       </span>
                     </TableCell>
-                    <TableCell>{lider.telefone || <span className="text-muted-foreground italic">N/A</span>}</TableCell>
+                    <TableCell>
+                      {lider.userId ? (
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          lider.userIsActive ? 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100' : 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100'
+                        }`}>
+                          {lider.userIsActive ? 'Ativo' : 'Inativo'}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground italic text-xs">Sem Login</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleToggleUserStatus(lider.nomeCompleto, lider.userId)}
+                        disabled={!lider.userId}
+                        title={!lider.userId ? "Este líder não possui uma conta de usuário para alterar o status." : (lider.userIsActive ? "Desativar Acesso" : "Ativar Acesso")}
+                      >
+                        {lider.userIsActive ? <ToggleRight className="mr-1 h-4 w-4 text-green-600" /> : <ToggleLeft className="mr-1 h-4 w-4 text-red-600" />}
+                        {lider.userIsActive ? "Desativar" : "Ativar"}
+                      </Button>
+                       {/* Adicionar outros botões de ação aqui se necessário, ex: Ver Detalhes, Editar Vida Líder */}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
               <TableCaption>
-                Exibindo {lideresList.length} líder(es).
+                Exibindo {lideresListComUserStatus.length} líder(es).
               </TableCaption>
             </Table>
           )}
