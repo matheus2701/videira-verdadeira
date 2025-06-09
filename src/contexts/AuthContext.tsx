@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useState, useMemo, useCallback } from 'react';
-import type { User, Role, Vida, CellGroup, CellMeetingStatus } from '@/types'; 
+import type { User, Role, Vida, CellGroup, StoredOffering, OfferingFormValues } from '@/types'; // Adicionado StoredOffering, OfferingFormValues
 
 interface AuthContextType {
   user: User | null;
@@ -13,12 +13,14 @@ interface AuthContextType {
   mockUsers: User[]; 
   mockVidas: Vida[];
   mockCellGroups: CellGroup[];
+  mockOfferings: StoredOffering[]; // Novo
   updateMockVida: (updatedVida: Vida) => void;
   addMockVida: (newVida: Vida) => void;
   updateMockCellGroup: (updatedCG: CellGroup) => void;
   addMockCellGroup: (newCG: CellGroup) => void;
-  addMockUser: (newUser: User) => void;      // Nova função
-  updateMockUser: (updatedUser: User) => void; // Nova função
+  addMockUser: (newUser: User) => void;
+  updateMockUser: (updatedUser: User) => void;
+  addMockOffering: (newOffering: OfferingFormValues) => void; // Novo
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,6 +59,7 @@ const initialMockCellGroups: CellGroup[] = [
     },
 ];
 
+// Mock data para usuários
 const mockMissionario: User = {
   id: 'user-missionario-01',
   name: 'Admin Missionário',
@@ -64,7 +67,7 @@ const mockMissionario: User = {
   role: 'missionario',
 };
 
-const mockLiderUserInitial: User = { // Renomeado para evitar conflito de nomes com a função
+const mockLiderUserInitial: User = { 
   id: 'user-lider-joao-01',
   name: 'Líder João', 
   email: 'lider.joao@videira.app',
@@ -76,28 +79,40 @@ const mockLiderUserInitial: User = { // Renomeado para evitar conflito de nomes 
 
 const initialMockUsers: User[] = [mockMissionario, mockLiderUserInitial];
 
+// Mock data inicial para Ofertas
+const currentYear = new Date().getFullYear();
+const initialMockOfferings: StoredOffering[] = [
+  { id: "off1", amount: 50, date: new Date(2024, 5, 5), cellGroupName: "Discípulos de Cristo", notes: "Oferta semanal" },
+  { id: "off2", amount: 75, date: new Date(2024, 5, 12), cellGroupName: "Leões de Judá", notes: "Culto de domingo" },
+  { id: "off3", amount: 60, date: new Date(2024, 6, 3), cellGroupName: "Discípulos de Cristo" }, // Note: notes pode ser undefined
+  { id: "off4", amount: 100, date: new Date(2024, 6, 10), cellGroupName: "Leões de Judá", notes: "Oferta especial" },
+  { id: "off5", amount: 40, date: new Date(2024, 6, 17), cellGroupName: "Discípulos de Cristo", notes: "Para missões" },
+  { id: "off6", amount: 80, date: new Date(currentYear, new Date().getMonth(), 1), cellGroupName: "Nova Geração", notes: "Oferta deste mês" },
+  { id: "off7", amount: 120, date: new Date(currentYear, new Date().getMonth() -1, 15), cellGroupName: "Discípulos de Cristo", notes: "Oferta do mês passado" },
+];
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(mockMissionario);
   const [vidasData, setVidasData] = useState<Vida[]>(initialMockVidas);
   const [cellGroupsData, setCellGroupsData] = useState<CellGroup[]>(initialMockCellGroups);
-  const [usersData, setUsersData] = useState<User[]>(initialMockUsers); // Novo estado para mockUsers
+  const [usersData, setUsersData] = useState<User[]>(initialMockUsers);
+  const [offeringsData, setOfferingsData] = useState<StoredOffering[]>(initialMockOfferings); // Novo estado para ofertas
 
   const loginAs = useCallback((role: Role) => {
     if (role === 'missionario') {
       setUser(mockMissionario);
     } else {
-      // Tenta encontrar o usuário líder correspondente na lista de usuários mock.
-      // Se não encontrar, usa o mockLiderUserInitial como fallback.
       const liderUser = usersData.find(u => u.role === 'lider_de_celula' && u.vidaId === 'vida-lider-joao') || mockLiderUserInitial;
       setUser(liderUser);
     }
-  }, [usersData]); // Adicionado usersData como dependência
+  }, [usersData]);
 
   const logout = useCallback(() => {
     setUser(null);
   }, []);
 
+  // Funções para Vidas
   const updateMockVida = useCallback((updatedVida: Vida) => {
     setVidasData(prev => prev.map(v => v.id === updatedVida.id ? updatedVida : v));
   }, []);
@@ -106,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVidasData(prev => [newVida, ...prev]);
   }, []);
 
+  // Funções para Grupos de Células
   const updateMockCellGroup = useCallback((updatedCG: CellGroup) => {
     setCellGroupsData(prev => {
       const newGroups = prev.map(cg => cg.id === updatedCG.id ? updatedCG : cg);
@@ -114,20 +130,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return newGroups;
     });
-  }, [user]); // Adicionado user como dependência
+  }, [user]);
 
   const addMockCellGroup = useCallback((newCG: CellGroup) => {
     setCellGroupsData(prev => [newCG, ...prev]);
   }, []);
 
-  // Novas funções para gerenciar mockUsers
+  // Funções para Usuários
   const addMockUser = useCallback((newUser: User) => {
     setUsersData(prev => {
-      // Evita duplicados pelo ID da Vida, se já existir um usuário para aquela vida
       const existingUserIndex = prev.findIndex(u => u.vidaId && u.vidaId === newUser.vidaId);
       if (existingUserIndex !== -1) {
         const updatedUsers = [...prev];
-        updatedUsers[existingUserIndex] = newUser; // Substitui se já existe com mesmo vidaId
+        updatedUsers[existingUserIndex] = newUser;
         return updatedUsers;
       }
       return [newUser, ...prev];
@@ -136,11 +151,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateMockUser = useCallback((updatedUser: User) => {
     setUsersData(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-     // Se o usuário atualizado é o usuário logado, atualiza o contexto do usuário logado
     if (user && user.id === updatedUser.id) {
       setUser(updatedUser);
     }
-  }, [user]); // Adicionado user como dependência
+  }, [user]);
+
+  // Função para Ofertas
+  const addMockOffering = useCallback((newOfferingData: OfferingFormValues) => {
+    const newOffering: StoredOffering = {
+      id: `off-${Date.now()}`,
+      ...newOfferingData,
+    };
+    setOfferingsData(prev => [newOffering, ...prev]);
+  }, []);
 
 
   const value = useMemo(() => ({
@@ -151,13 +174,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mockUsers: usersData, 
     mockVidas: vidasData,
     mockCellGroups: cellGroupsData,
+    mockOfferings: offeringsData, // Expor mockOfferings
     updateMockVida,
     addMockVida,
     updateMockCellGroup,
     addMockCellGroup,
-    addMockUser,      // Expor nova função
-    updateMockUser,   // Expor nova função
-  }), [user, loginAs, logout, usersData, vidasData, cellGroupsData, updateMockVida, addMockVida, updateMockCellGroup, addMockCellGroup, addMockUser, updateMockUser]);
+    addMockUser,
+    updateMockUser,
+    addMockOffering, // Expor addMockOffering
+  }), [user, loginAs, logout, usersData, vidasData, cellGroupsData, offeringsData, updateMockVida, addMockVida, updateMockCellGroup, addMockCellGroup, addMockUser, updateMockUser, addMockOffering]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

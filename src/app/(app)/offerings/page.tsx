@@ -4,36 +4,25 @@
 import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+// import { z } from "zod"; // Removido, usará de src/types
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from "@/components/ui/form"; // Renamed FormLabel to avoid conflict
+import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
-import { PlusCircle, Filter, HandCoins } from "lucide-react";
+import { PlusCircle, Filter, HandCoins, CalendarDays } from "lucide-react"; // Adicionado CalendarDays
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Label } from "@/components/ui/label"; // Import standard Label
+import { Label } from "@/components/ui/label";
+import { offeringSchema, type OfferingFormValues, type StoredOffering } from "@/types"; // Importado de src/types
+import { Skeleton } from "@/components/ui/skeleton";
 
-const offeringSchema = z.object({
-  amount: z.coerce.number().positive({ message: "Valor deve ser positivo." }),
-  date: z.date({ required_error: "Data da oferta é obrigatória." }),
-  cellGroupName: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type OfferingFormValues = z.infer<typeof offeringSchema>;
-
-// Interface para o dado de oferta armazenado (com ID, se viesse do backend)
-interface StoredOffering extends OfferingFormValues {
-  id: string;
-}
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
@@ -42,26 +31,17 @@ const months = Array.from({ length: 12 }, (_, i) => ({
   label: format(new Date(0, i), "MMMM", { locale: ptBR }),
 }));
 
-// Mock data for offerings
-const initialMockOfferings: StoredOffering[] = [
-  { id: "off1", amount: 50, date: new Date(2024, 5, 5), cellGroupName: "Discípulos de Cristo", notes: "Oferta semanal" },
-  { id: "off2", amount: 75, date: new Date(2024, 5, 12), cellGroupName: "Leões de Judá", notes: "Culto de domingo" },
-  { id: "off3", amount: 60, date: new Date(2024, 6, 3), cellGroupName: "Discípulos de Cristo", notes: "" },
-  { id: "off4", amount: 100, date: new Date(2024, 6, 10), cellGroupName: "Leões de Judá", notes: "Oferta especial" },
-  { id: "off5", amount: 40, date: new Date(2024, 6, 17), cellGroupName: "Discípulos de Cristo", notes: "Para missões" },
-  { id: "off6", amount: 80, date: new Date(currentYear, new Date().getMonth(), 1), cellGroupName: "Nova Geração", notes: "Oferta deste mês" },
-  { id: "off7", amount: 120, date: new Date(currentYear, new Date().getMonth() -1, 15), cellGroupName: "Discípulos de Cristo", notes: "Oferta do mês passado" },
-];
-
 
 export default function OfferingsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [offerings, setOfferings] = useState<StoredOffering[]>(initialMockOfferings);
+  // const [offerings, setOfferings] = useState<StoredOffering[]>(initialMockOfferings); // Removido, usará do contexto
   const [filteredOfferings, setFilteredOfferings] = useState<StoredOffering[]>([]);
   const [totalFilteredAmount, setTotalFilteredAmount] = useState(0);
+  const [formattedDates, setFormattedDates] = useState<Record<string, string>>({});
+
 
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, mockOfferings, addMockOffering } = useAuth(); // Usar mockOfferings e addMockOffering do contexto
 
   const defaultMonth = (new Date().getMonth() + 1).toString();
   const defaultYear = new Date().getFullYear().toString();
@@ -71,9 +51,9 @@ export default function OfferingsPage() {
   const [selectedCellGroup, setSelectedCellGroup] = useState<string>("todos");
 
   const uniqueCellGroups = useMemo(() => {
-    const groups = new Set(offerings.map(o => o.cellGroupName).filter(Boolean) as string[]);
+    const groups = new Set(mockOfferings.map(o => o.cellGroupName).filter(Boolean) as string[]);
     return ["todos", ...Array.from(groups)];
-  }, [offerings]);
+  }, [mockOfferings]);
 
   const form = useForm<OfferingFormValues>({
     resolver: zodResolver(offeringSchema),
@@ -96,9 +76,8 @@ export default function OfferingsPage() {
   }, [user, form.reset]);
 
   useEffect(() => {
-    let tempOfferings = [...offerings];
+    let tempOfferings = [...mockOfferings];
 
-    // Filter by month and year
     if (selectedMonth && selectedYear) {
       tempOfferings = tempOfferings.filter(o => {
         const offeringDate = new Date(o.date);
@@ -109,11 +88,9 @@ export default function OfferingsPage() {
       });
     }
 
-    // Filter by cell group
     if (user?.role === 'missionario' && selectedCellGroup !== "todos") {
       tempOfferings = tempOfferings.filter(o => o.cellGroupName === selectedCellGroup);
     } else if (user?.role === 'lider_de_celula' && user.cellGroupName) {
-      // Leaders always see only their cell's offerings
       tempOfferings = tempOfferings.filter(o => o.cellGroupName === user.cellGroupName);
     }
     
@@ -122,17 +99,22 @@ export default function OfferingsPage() {
     const total = tempOfferings.reduce((sum, o) => sum + o.amount, 0);
     setTotalFilteredAmount(total);
 
-  }, [selectedMonth, selectedYear, selectedCellGroup, offerings, user]);
+    // Hydration fix for dates in the table
+    const newFormattedDates: Record<string, string> = {};
+    tempOfferings.forEach(offering => {
+      newFormattedDates[offering.id] = format(new Date(offering.date), "dd/MM/yyyy", { locale: ptBR });
+    });
+    setFormattedDates(newFormattedDates);
+
+  }, [selectedMonth, selectedYear, selectedCellGroup, mockOfferings, user]);
 
 
   function onSubmit(values: OfferingFormValues) {
-    const newOffering: StoredOffering = {
+    const offeringDataToSubmit: OfferingFormValues = {
       ...values,
-      id: `off-${Date.now()}`, // Mock ID
       cellGroupName: user?.role === 'lider_de_celula' ? user.cellGroupName : values.cellGroupName,
     };
-    console.log("Dados da Oferta:", newOffering);
-    setOfferings(prev => [newOffering, ...prev]); // Add to mock data list
+    addMockOffering(offeringDataToSubmit); // Usar função do contexto
     toast({
       title: "Sucesso!",
       description: "Oferta registrada com sucesso.",
@@ -148,10 +130,10 @@ export default function OfferingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="font-headline text-3xl font-semibold">Rastrear Ofertas</h1>
+        <h1 className="font-headline text-2xl sm:text-3xl font-semibold">Rastrear Ofertas</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button size="sm" className="text-xs sm:text-sm">
               <PlusCircle className="mr-2 h-4 w-4" /> Registrar Oferta
             </Button>
           </DialogTrigger>
@@ -225,9 +207,7 @@ export default function OfferingsPage() {
                   )}
                 />
                 <DialogFooter className="pt-4">
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">Cancelar</Button>
-                  </DialogClose>
+                  <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
                   <Button type="submit">Salvar Oferta</Button>
                 </DialogFooter>
               </form>
@@ -323,7 +303,7 @@ export default function OfferingsPage() {
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead>
+                <TableHead><CalendarDays className="inline mr-1 h-4 w-4"/>Data</TableHead>
                 <TableHead>Célula</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>Notas</TableHead>
@@ -332,7 +312,7 @@ export default function OfferingsPage() {
             <TableBody>
               {filteredOfferings.map((offering) => (
                 <TableRow key={offering.id}>
-                  <TableCell>{format(new Date(offering.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                  <TableCell>{formattedDates[offering.id] || <Skeleton className="h-4 w-24" />}</TableCell>
                   <TableCell>{offering.cellGroupName || "N/A"}</TableCell>
                   <TableCell className="text-right">{formatCurrency(offering.amount)}</TableCell>
                   <TableCell>{offering.notes || "-"}</TableCell>
@@ -345,6 +325,3 @@ export default function OfferingsPage() {
     </div>
   );
 }
-
-
-    

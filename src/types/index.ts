@@ -1,4 +1,6 @@
 
+import { z } from "zod";
+
 export type Role = 'missionario' | 'lider_de_celula';
 
 export interface User {
@@ -71,8 +73,8 @@ export interface EncounterTeam {
   eventDate?: Date;
   description?: string;
   createdAt: Date;
-  organizerUserId?: string; // ID do Usuário organizador (Missionário ou Líder)
-  organizerUserName?: string; // Nome do Usuário organizador para exibição
+  organizerUserId?: string; 
+  organizerUserName?: string;
 }
 
 export interface EncounterTeamMember {
@@ -83,4 +85,18 @@ export interface EncounterTeamMember {
   teamRole: EncounterTeamRole;
   notes?: string;
   addedAt: Date;
+}
+
+// Tipos para Ofertas
+export const offeringSchema = z.object({
+  amount: z.coerce.number().positive({ message: "Valor deve ser positivo." }),
+  date: z.date({ required_error: "Data da oferta é obrigatória." }),
+  cellGroupName: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type OfferingFormValues = z.infer<typeof offeringSchema>;
+
+export interface StoredOffering extends OfferingFormValues {
+  id: string;
 }
