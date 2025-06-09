@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -26,7 +27,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import type { Vida, CellGroup, User as AuthUser, VidaStatus, Role } from '@/types';
-import { ArrowLeft, Save, UserPlus } from 'lucide-react';
+import { ArrowLeft, Save, UserPlus, KeyRound, Mail } from 'lucide-react';
 
 const newLiderSchema = z.object({
   vidaId: z.string({ required_error: 'Selecione uma Vida para promover.' }),
@@ -34,6 +35,8 @@ const newLiderSchema = z.object({
     required_error: 'Selecione o novo status para o líder.',
   }),
   cellGroupId: z.string({ required_error: 'Selecione a célula que este líder irá liderar.' }),
+  email: z.string().email({ message: "Formato de e-mail inválido." }),
+  password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres." }), // Mínimo para simular campo
 });
 
 type NewLiderFormValues = z.infer<typeof newLiderSchema>;
@@ -46,11 +49,11 @@ export default function NovoLiderPage() {
     mockCellGroups, 
     updateMockVida, 
     updateMockCellGroup, 
-    mockUsers, // Usaremos para verificar se um user já existe
-    setUser, // Para atualizar o contexto se o usuário logado for promovido
-    user: currentUser, // Para verificar se o usuário logado é a vida sendo promovida
-    addMockUser, // Adicionaremos esta função ao AuthContext
-    updateMockUser // Adicionaremos esta função ao AuthContext
+    mockUsers, 
+    setUser, 
+    user: currentUser, 
+    addMockUser, 
+    updateMockUser
 } = useAuth();
 
   const form = useForm<NewLiderFormValues>({
@@ -59,6 +62,8 @@ export default function NovoLiderPage() {
       vidaId: undefined,
       novoStatus: undefined,
       cellGroupId: undefined,
+      email: "",
+      password: "",
     },
   });
 
@@ -66,7 +71,25 @@ export default function NovoLiderPage() {
     (v) => v.status === 'membro' || v.status === 'lider_em_treinamento'
   );
 
-  const cellGroupsDisponiveis = mockCellGroups.filter(cg => cg && cg.id); // Filtra IDs vazios
+  const cellGroupsDisponiveis = mockCellGroups.filter(cg => cg && cg.id);
+
+  // Preencher o campo de e-mail se uma vida já tiver um usuário associado
+  const selectedVidaId = form.watch('vidaId');
+  useEffect(() => {
+    if (selectedVidaId) {
+      const vida = mockVidas.find(v => v.id === selectedVidaId);
+      if (vida) {
+        const existingUser = mockUsers.find(u => u.vidaId === vida.id);
+        if (existingUser && existingUser.email) {
+          form.setValue('email', existingUser.email);
+        } else {
+          // Opcional: Gerar e-mail padrão se não houver usuário, ou deixar em branco
+           form.setValue('email', `${vida.nomeCompleto.toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '')}@videira.app`);
+        }
+      }
+    }
+  }, [selectedVidaId, mockVidas, mockUsers, form]);
+
 
   function onSubmit(data: NewLiderFormValues) {
     const vidaSelecionada = mockVidas.find((v) => v.id === data.vidaId);
@@ -90,19 +113,8 @@ export default function NovoLiderPage() {
       geracaoCelula: celulaSelecionada.geracao,
     };
     updateMockVida(vidaAtualizada);
-
-    // 2. Se a célula selecionada já tinha um líder diferente, idealmente o status desse líder antigo seria revertido.
-    // Por simplicidade no mock, apenas desvinculamos o antigo da célula específica.
-    if (celulaSelecionada.liderVidaId && celulaSelecionada.liderVidaId !== vidaSelecionada.id) {
-        const liderAntigoDaCelula = mockVidas.find(v => v.id === celulaSelecionada.liderVidaId);
-        if (liderAntigoDaCelula) {
-            // Opcional: Verifique se este líder antigo lidera outras células.
-            // Se não, talvez reverter seu status para 'membro'.
-            // Para o mock: console.log(`Líder anterior ${liderAntigoDaCelula.nomeCompleto} desvinculado da célula ${celulaSelecionada.name}.`);
-        }
-    }
     
-    // 3. Atualizar a Célula com o novo líder
+    // 2. Atualizar a Célula com o novo líder
     const celulaAtualizada: CellGroup = {
       ...celulaSelecionada,
       liderVidaId: vidaSelecionada.id,
@@ -110,40 +122,44 @@ export default function NovoLiderPage() {
     };
     updateMockCellGroup(celulaAtualizada);
     
-    // 4. Simular criação/atualização do User no AuthContext
+    // 3. Criar/atualizar o User no AuthContext
     let userParaAuth = mockUsers.find(u => u.vidaId === vidaSelecionada.id);
     const userRole: Role = 'lider_de_celula';
 
-    if (userParaAuth) { // Se já existe um User para esta Vida
+    if (userParaAuth) { 
       const updatedUser = {
         ...userParaAuth,
+        name: vidaSelecionada.nomeCompleto, // Sincronizar nome
+        email: data.email, // Usar e-mail do formulário
         role: userRole,
         cellGroupId: celulaAtualizada.id,
         cellGroupName: celulaAtualizada.name,
+        isActive: true, // Garante que está ativo ao ser promovido/atualizado
       };
-      updateMockUser(updatedUser); // Função a ser adicionada no AuthContext
+      updateMockUser(updatedUser); 
       if (currentUser && currentUser.id === updatedUser.id) {
-        setUser(updatedUser); // Atualiza o usuário logado se for ele mesmo
+        setUser(updatedUser); 
       }
-    } else { // Criar novo User
+    } else { 
       const newUser: AuthUser = {
         id: `user-${vidaSelecionada.id}-${Date.now()}`,
         name: vidaSelecionada.nomeCompleto,
-        email: `${vidaSelecionada.nomeCompleto.toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '')}@videira.app`,
+        email: data.email, // Usar e-mail do formulário
         role: userRole,
         vidaId: vidaSelecionada.id,
         cellGroupId: celulaAtualizada.id,
         cellGroupName: celulaAtualizada.name,
+        isActive: true, // Ativo por padrão
       };
-      addMockUser(newUser); // Função a ser adicionada no AuthContext
-      if (currentUser && currentUser.vidaId === newUser.vidaId) { // Caso raro onde o user logado era uma vida sem user associado.
+      addMockUser(newUser); 
+      if (currentUser && currentUser.vidaId === newUser.vidaId) { 
         setUser(newUser);
       }
     }
 
     toast({
       title: 'Sucesso!',
-      description: `${vidaSelecionada.nomeCompleto} foi definido como ${data.novoStatus.replace(/_/g, ' ')} da célula ${celulaSelecionada.name}.`,
+      description: `${vidaSelecionada.nomeCompleto} foi definido como ${data.novoStatus.replace(/_/g, ' ')} da célula ${celulaSelecionada.name}. Login: ${data.email}`,
     });
     router.push('/lideres');
   }
@@ -163,7 +179,7 @@ export default function NovoLiderPage() {
       <Card className="max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardDescription className="font-body">
-            Selecione uma Vida, defina seu novo status de liderança e a célula que irá liderar.
+            Selecione uma Vida, defina seu novo status, célula, e-mail e senha para acesso ao sistema.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -242,6 +258,41 @@ export default function NovoLiderPage() {
                   </FormItem>
                 )}
               />
+              
+              <div className="border-t pt-6 space-y-6">
+                <p className="text-sm font-medium text-muted-foreground flex items-center">
+                    <Mail className="mr-2 h-4 w-4" />
+                    Credenciais de Acesso ao Sistema
+                </p>
+                <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>E-mail (Login)</FormLabel>
+                        <FormControl>
+                        <Input type="email" placeholder="exemplo@videira.app" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Senha</FormLabel>
+                        <FormControl>
+                        <Input type="password" placeholder="********" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
+
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => router.back()}>
@@ -260,3 +311,5 @@ export default function NovoLiderPage() {
   );
 }
 
+
+    
