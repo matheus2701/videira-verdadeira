@@ -46,16 +46,20 @@ export default function VidasPage() {
     },
   });
 
+  // Effect to set default cell for leaders or reset form when user changes
   useEffect(() => {
-    if (user?.role === 'lider_de_celula') {
-      form.reset({
-        ...form.getValues(),
-        idCelula: user.cellGroupId,
-      });
+    if (!editingVida) { // Only apply default or reset if not editing
+        form.reset({
+            nomeCompleto: "",
+            dataNascimento: undefined,
+            telefone: "",
+            idCelula: user?.role === 'lider_de_celula' ? user.cellGroupId : undefined,
+            status: "membro",
+        });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, form.reset]);
+  }, [user?.role, user?.cellGroupId, editingVida, form]);
 
+  // Effect to populate form when editingVida changes
   useEffect(() => {
     if (editingVida) {
       form.reset({
@@ -67,16 +71,19 @@ export default function VidasPage() {
       });
       setIsDialogOpen(true);
     } else {
-      form.reset({
-        nomeCompleto: "",
-        dataNascimento: undefined,
-        telefone: "",
-        idCelula: user?.role === 'lider_de_celula' ? user.cellGroupId : undefined,
-        status: "membro",
-      });
+      // Reset to defaults if editingVida is null (e.g., after closing an edit dialog without saving, or clicking "Add New")
+      // This is now handled by the effect above to centralize reset logic
+       if (isDialogOpen && !editingVida) { // Only reset if dialog was meant to be for new and it's open
+         form.reset({
+            nomeCompleto: "",
+            dataNascimento: undefined,
+            telefone: "",
+            idCelula: user?.role === 'lider_de_celula' ? user.cellGroupId : undefined,
+            status: "membro",
+        });
+       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingVida, user, form.reset]);
+  }, [editingVida, form, user?.role, user?.cellGroupId, isDialogOpen]);
 
 
   function onSubmit(values: VidaFormValues) {
@@ -86,7 +93,7 @@ export default function VidasPage() {
       const updatedVida: Vida = { 
         ...editingVida, 
         ...values,
-        nomeCompleto: values.nomeCompleto, // Explicitly map from form values
+        nomeCompleto: values.nomeCompleto, 
         dataNascimento: values.dataNascimento,
         telefone: values.telefone,
         idCelula: values.idCelula,
@@ -100,7 +107,7 @@ export default function VidasPage() {
       const newVida: Vida = {
         id: `vida-${Date.now()}`,
         ...values,
-        nomeCompleto: values.nomeCompleto, // Explicitly map
+        nomeCompleto: values.nomeCompleto, 
         dataNascimento: values.dataNascimento,
         status: values.status as VidaStatus,
         nomeCelula: cell?.name,
@@ -112,15 +119,15 @@ export default function VidasPage() {
     }
     
     setIsDialogOpen(false);
-    setEditingVida(null);
+    setEditingVida(null); 
   }
 
   const handleEdit = (vida: Vida) => {
     setEditingVida(vida);
+    // setIsDialogOpen(true); // Dialog open is handled by useEffect on editingVida
   };
   
   const handlePromote = (vida: Vida) => {
-    // Placeholder: Lógica de promoção/gerenciamento de liderança
     toast({ title: "Ação de Liderança", description: `Gerenciar liderança para ${vida.nomeCompleto}. (Em desenvolvimento)`});
   }
 
@@ -138,7 +145,12 @@ export default function VidasPage() {
         <h1 className="font-headline text-3xl font-semibold">
           {user?.role === 'lider_de_celula' ? `Vidas de ${user.cellGroupName || 'Minha Célula'}` : 'Diretório de Vidas'}
         </h1>
-        <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { setIsDialogOpen(isOpen); if (!isOpen) setEditingVida(null); }}>
+        <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { 
+            setIsDialogOpen(isOpen); 
+            if (!isOpen) {
+                setEditingVida(null); // Ensure editingVida is reset when dialog closes
+            }
+        }}>
           <DialogTrigger asChild>
             <Button onClick={() => { setEditingVida(null); setIsDialogOpen(true); }}>
               <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Vida
@@ -193,7 +205,7 @@ export default function VidasPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Célula Vinculada</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={user?.role === 'lider_de_celula'}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={user?.role === 'lider_de_celula' && !editingVida}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione a célula" />

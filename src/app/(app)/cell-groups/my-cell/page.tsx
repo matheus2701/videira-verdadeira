@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -58,115 +58,97 @@ export default function MyCellPage() {
   const { toast } = useToast();
   const { user, mockCellGroups, updateMockCellGroup } = useAuth(); 
 
-  const [myCellData, setMyCellData] = useState<Partial<CellGroup>>({});
+  const currentCellDetails = useMemo(() => {
+    if (user?.cellGroupId) {
+      return mockCellGroups.find(cg => cg.id === user.cellGroupId);
+    }
+    return undefined;
+  }, [user?.cellGroupId, mockCellGroups]);
+
+  const myCellDataForForm = useMemo(() => {
+    if (currentCellDetails) {
+      return currentCellDetails;
+    }
+    if (user) { // User exists but no cellGroupId or cell not found
+      const defaultLeaderCellName = user.name ? `Célula de ${user.name}` : "Minha Célula";
+      return {
+        id: user.cellGroupId || `temp-id-${user.id}`, // Use temp id if no cellGroupId
+        name: defaultLeaderCellName,
+        liderNome: user.name,
+        address: "Rua da Fé, 123, Bairro Esperança", 
+        meetingDay: "Quarta-feira", 
+        meetingTime: "19:30", 
+        geracao: "G1 (Exemplo)", 
+        meetingStatus: 'agendada' as CellMeetingStatus,
+        lastStatusUpdate: new Date(),
+      };
+    }
+    return {}; // Should ideally not happen if user is a cell leader
+  }, [currentCellDetails, user]);
+
 
   const form = useForm<MyCellGroupFormValues>({
     resolver: zodResolver(myCellGroupSchema),
-    defaultValues: myCellData,
+    defaultValues: {
+        name: myCellDataForForm?.name || "",
+        address: myCellDataForForm?.address || "",
+        meetingDay: myCellDataForForm?.meetingDay || undefined,
+        meetingTime: myCellDataForForm?.meetingTime || "",
+        geracao: myCellDataForForm?.geracao || "",
+    },
   });
 
   const statusForm = useForm<WeeklyStatusFormValues>({
     resolver: zodResolver(weeklyStatusSchema),
     defaultValues: {
-        meetingStatus: myCellData?.meetingStatus || 'agendada',
-        meetingStatusReason: myCellData?.meetingStatusReason || "",
-        statusUpdateDate: myCellData?.lastStatusUpdate ? new Date(myCellData.lastStatusUpdate) : new Date(),
+        meetingStatus: myCellDataForForm?.meetingStatus || 'agendada',
+        meetingStatusReason: myCellDataForForm?.meetingStatusReason || "",
+        statusUpdateDate: myCellDataForForm?.lastStatusUpdate ? new Date(myCellDataForForm.lastStatusUpdate) : new Date(),
     }
   });
   
   useEffect(() => {
-    if (user?.cellGroupId) {
-        const currentCell = mockCellGroups.find(cg => cg.id === user.cellGroupId);
-        if (currentCell) {
-            setMyCellData(currentCell);
-            form.reset({
-                name: currentCell.name,
-                address: currentCell.address,
-                meetingDay: currentCell.meetingDay,
-                meetingTime: currentCell.meetingTime,
-                geracao: currentCell.geracao,
-            });
-            statusForm.reset({
-                meetingStatus: currentCell.meetingStatus || 'agendada',
-                meetingStatusReason: currentCell.meetingStatusReason || "",
-                statusUpdateDate: currentCell.lastStatusUpdate ? new Date(currentCell.lastStatusUpdate) : new Date(),
-            });
-        } else {
-            const defaultLeaderCellName = user?.name ? `Célula de ${user.name}` : "Minha Célula";
-            const fallbackData: CellGroup = {
-                id: user.cellGroupId, // Should have an ID
-                name: defaultLeaderCellName,
-                address: "Rua da Fé, 123, Bairro Esperança",
-                meetingDay: "Quarta-feira",
-                meetingTime: "19:30",
-                liderNome: user.name,
-                geracao: "G1 (Padrão)",
-                meetingStatus: 'agendada',
-                lastStatusUpdate: new Date(),
-            };
-            setMyCellData(fallbackData);
-            form.reset({
-                name: fallbackData.name,
-                address: fallbackData.address,
-                meetingDay: fallbackData.meetingDay,
-                meetingTime: fallbackData.meetingTime,
-                geracao: fallbackData.geracao,
-            });
-            statusForm.reset({
-                meetingStatus: fallbackData.meetingStatus,
-                meetingStatusReason: fallbackData.meetingStatusReason || "",
-                statusUpdateDate: fallbackData.lastStatusUpdate ? new Date(fallbackData.lastStatusUpdate) : new Date(),
-            });
-        }
-    } else if (user) { // User exists but no cellGroupId
-         const defaultLeaderCellName = user?.name ? `Célula de ${user.name}` : "Minha Célula";
-         const initialData = {
-            name: defaultLeaderCellName,
-            liderNome: user?.name,
-            address: "Rua da Fé, 123, Bairro Esperança", 
-            meetingDay: "Quarta-feira", 
-            meetingTime: "19:30", 
-            geracao: "G1 (Exemplo)", 
-            meetingStatus: 'agendada' as CellMeetingStatus,
-            lastStatusUpdate: new Date(),
-         };
-         setMyCellData(initialData);
-         form.reset({
-            name: initialData.name,
-            address: initialData.address,
-            meetingDay: initialData.meetingDay,
-            meetingTime: initialData.meetingTime,
-            geracao: initialData.geracao,
-        });
-        statusForm.reset({
-            meetingStatus: initialData.meetingStatus,
-            meetingStatusReason: "",
-            statusUpdateDate: initialData.lastStatusUpdate,
-        });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, mockCellGroups]); 
+    // Reset forms when the user or their specific cell data changes
+    form.reset({
+        name: myCellDataForForm.name || "",
+        address: myCellDataForForm.address || "",
+        meetingDay: myCellDataForForm.meetingDay || undefined,
+        meetingTime: myCellDataForForm.meetingTime || "",
+        geracao: myCellDataForForm.geracao || "",
+    });
+    statusForm.reset({
+        meetingStatus: myCellDataForForm.meetingStatus || 'agendada',
+        meetingStatusReason: myCellDataForForm.meetingStatusReason || "",
+        statusUpdateDate: myCellDataForForm.lastStatusUpdate ? new Date(myCellDataForForm.lastStatusUpdate) : new Date(),
+    });
+  }, [myCellDataForForm, form, statusForm]); 
 
 
   function onSubmitEdit(values: MyCellGroupFormValues) {
-    if (!user?.cellGroupId) {
+    if (!user?.cellGroupId && !myCellDataForForm.id?.startsWith('temp-id')) {
       toast({ title: "Erro", description: "Nenhuma célula associada para atualizar.", variant: "destructive" });
       return;
     }
+    const cellIdToUpdate = user?.cellGroupId || myCellDataForForm.id;
+    if (!cellIdToUpdate) {
+         toast({ title: "Erro", description: "ID da célula não encontrado.", variant: "destructive" });
+         return;
+    }
+
     const updatedCell: CellGroup = {
-      ...myCellData,
+      ...(currentCellDetails || {}), // Start with existing details if available
       ...values,
-      id: user.cellGroupId, 
-      liderNome: user.name, 
+      id: cellIdToUpdate, 
+      liderNome: user?.name || myCellDataForForm.liderNome, 
       name: values.name, 
       address: values.address,
       meetingDay: values.meetingDay,
       meetingTime: values.meetingTime,
       geracao: values.geracao,
-      // meetingStatus and reason are handled by the other form
+      meetingStatus: currentCellDetails?.meetingStatus || myCellDataForForm.meetingStatus, // Preserve status from context
+      lastStatusUpdate: currentCellDetails?.lastStatusUpdate || myCellDataForForm.lastStatusUpdate, // Preserve status date
     };
     updateMockCellGroup(updatedCell); 
-    setMyCellData(updatedCell); 
     toast({
       title: "Sucesso!",
       description: "Dados da sua célula atualizados.",
@@ -175,23 +157,27 @@ export default function MyCellPage() {
   }
 
   function onSubmitStatusUpdate(values: WeeklyStatusFormValues) {
-    if (!user?.cellGroupId || !myCellData.id) {
+     const cellIdToUpdate = user?.cellGroupId || myCellDataForForm.id;
+    if (!cellIdToUpdate) {
         toast({ title: "Erro", description: "Célula não identificada para atualizar status.", variant: "destructive" });
         return;
     }
+    const baseCellData = currentCellDetails || myCellDataForForm;
+
     const updatedCellWithStatus: CellGroup = {
-        ...myCellData,
-        id: myCellData.id, // Ensure ID is present
-        name: myCellData.name!, // Ensure name is present
-        address: myCellData.address!, // Ensure address is present
-        meetingDay: myCellData.meetingDay!,
-        meetingTime: myCellData.meetingTime!,
+        ...baseCellData,
+        id: cellIdToUpdate,
+        name: baseCellData.name!, 
+        address: baseCellData.address!,
+        meetingDay: baseCellData.meetingDay!,
+        meetingTime: baseCellData.meetingTime!,
+        liderNome: baseCellData.liderNome || user?.name,
+        geracao: baseCellData.geracao,
         meetingStatus: values.meetingStatus,
         meetingStatusReason: values.meetingStatusReason,
         lastStatusUpdate: values.statusUpdateDate,
     };
     updateMockCellGroup(updatedCellWithStatus);
-    setMyCellData(updatedCellWithStatus);
     toast({ title: "Sucesso!", description: "Status semanal da célula atualizado."});
     setIsStatusDialogOpen(false);
   }
@@ -206,7 +192,7 @@ export default function MyCellPage() {
     );
   }
   
-  if (!user.cellGroupId) { 
+  if (!user.cellGroupId && !myCellDataForForm.id?.startsWith('temp-id-')) { 
      return (
       <div className="flex flex-col items-center justify-center h-full">
         <ShieldAlert className="w-16 h-16 text-yellow-500 mb-4" />
@@ -217,13 +203,13 @@ export default function MyCellPage() {
   }
   
   const showStatusReasonField = ['nao_aconteceu_com_aviso', 'nao_aconteceu_sem_aviso', 'cancelada_com_aviso'].includes(statusForm.watch('meetingStatus') || '');
-  const currentStatusLabel = cellMeetingStatusOptions.find(opt => opt.value === myCellData.meetingStatus)?.label;
+  const currentStatusLabel = cellMeetingStatusOptions.find(opt => opt.value === myCellDataForForm.meetingStatus)?.label;
 
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="font-headline text-2xl sm:text-3xl font-semibold">Gerenciar Minha Célula: {myCellData.name}</h1>
+        <h1 className="font-headline text-2xl sm:text-3xl font-semibold">Gerenciar Minha Célula: {myCellDataForForm.name}</h1>
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="text-xs sm:text-sm">
@@ -232,7 +218,7 @@ export default function MyCellPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[480px]">
             <DialogHeader>
-              <DialogTitle className="font-headline">Editar Dados da Célula: {myCellData.name}</DialogTitle>
+              <DialogTitle className="font-headline">Editar Dados da Célula: {myCellDataForForm.name}</DialogTitle>
               <DialogDescription className="font-body">
                 Atualize os detalhes do seu grupo de célula.
               </DialogDescription>
@@ -240,7 +226,7 @@ export default function MyCellPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmitEdit)} className="space-y-4 py-4">
                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nome do Grupo</FormLabel><FormControl><Input placeholder="Ex: Discípulos de Cristo" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormItem><FormLabel>Nome do Líder</FormLabel><Input value={myCellData.liderNome || user?.name || ''} readOnly disabled /></FormItem>
+                <FormItem><FormLabel>Nome do Líder</FormLabel><Input value={myCellDataForForm.liderNome || user?.name || ''} readOnly disabled /></FormItem>
                 <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Endereço</FormLabel><FormControl><Input placeholder="Ex: Rua Exemplo, 123, Bairro" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="geracao" render={({ field }) => ( <FormItem><FormLabel>Geração da Célula</FormLabel><FormControl><Input placeholder="Ex: G1, Conquistadores" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -260,15 +246,15 @@ export default function MyCellPage() {
       <Card>
         <CardHeader><CardTitle className="font-headline">Detalhes da Célula</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm sm:text-base">
-            <p><strong className="font-medium">Nome:</strong> {myCellData.name}</p>
-            <p><strong className="font-medium">Líder:</strong> {myCellData.liderNome || user?.name}</p>
-            <p><strong className="font-medium">Endereço:</strong> {myCellData.address}</p>
-            <p><strong className="font-medium">Geração:</strong> {myCellData.geracao || 'Não definida'}</p>
-            <p><strong className="font-medium">Dia da Reunião:</strong> {myCellData.meetingDay}</p>
-            <p><strong className="font-medium">Horário:</strong> {myCellData.meetingTime}</p>
+            <p><strong className="font-medium">Nome:</strong> {myCellDataForForm.name}</p>
+            <p><strong className="font-medium">Líder:</strong> {myCellDataForForm.liderNome || user?.name}</p>
+            <p><strong className="font-medium">Endereço:</strong> {myCellDataForForm.address}</p>
+            <p><strong className="font-medium">Geração:</strong> {myCellDataForForm.geracao || 'Não definida'}</p>
+            <p><strong className="font-medium">Dia da Reunião:</strong> {myCellDataForForm.meetingDay}</p>
+            <p><strong className="font-medium">Horário:</strong> {myCellDataForForm.meetingTime}</p>
             <p><strong className="font-medium">Status da Última Reunião:</strong> {currentStatusLabel || 'Não informado'}</p>
-            {myCellData.meetingStatusReason && <p><strong className="font-medium">Motivo:</strong> {myCellData.meetingStatusReason}</p>}
-            {myCellData.lastStatusUpdate && <p><strong className="font-medium">Última Atualização de Status:</strong> {format(new Date(myCellData.lastStatusUpdate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
+            {myCellDataForForm.meetingStatusReason && <p><strong className="font-medium">Motivo:</strong> {myCellDataForForm.meetingStatusReason}</p>}
+            {myCellDataForForm.lastStatusUpdate && <p><strong className="font-medium">Última Atualização de Status:</strong> {format(new Date(myCellDataForForm.lastStatusUpdate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
         </CardContent>
       </Card>
 
@@ -352,13 +338,13 @@ export default function MyCellPage() {
         </CardHeader>
         <CardContent>
              <p className="text-sm text-muted-foreground font-body">
-                {myCellData.meetingStatus === 'aconteceu' && <CheckSquare className="inline mr-2 h-5 w-5 text-green-600" />}
-                {myCellData.meetingStatus && myCellData.meetingStatus !== 'aconteceu' && <XSquare className="inline mr-2 h-5 w-5 text-red-600" />}
+                {myCellDataForForm.meetingStatus === 'aconteceu' && <CheckSquare className="inline mr-2 h-5 w-5 text-green-600" />}
+                {myCellDataForForm.meetingStatus && myCellDataForForm.meetingStatus !== 'aconteceu' && <XSquare className="inline mr-2 h-5 w-5 text-red-600" />}
                 Status atual da reunião: <span className="font-semibold">{currentStatusLabel || 'Pendente de atualização'}</span>.
             </p>
-            {myCellData.lastStatusUpdate && (
+            {myCellDataForForm.lastStatusUpdate && (
                  <p className="text-xs text-muted-foreground font-body mt-1">
-                    Última atualização em: {format(new Date(myCellData.lastStatusUpdate), "dd/MM/yyyy", { locale: ptBR })}.
+                    Última atualização em: {format(new Date(myCellDataForForm.lastStatusUpdate), "dd/MM/yyyy", { locale: ptBR })}.
                 </p>
             )}
         </CardContent>
