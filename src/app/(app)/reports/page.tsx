@@ -9,14 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, BarChartBig, Activity, HandCoins } from "lucide-react"; // Adicionado HandCoins
-import type { CellGroup, CellMeetingStatus, Vida, StoredOffering } from '@/types'; // Adicionado Vida, StoredOffering
+import { ShieldAlert, BarChartBig, Activity, HandCoins, Download } from "lucide-react"; // Adicionado HandCoins e Download
+import type { CellGroup, CellMeetingStatus, Vida, StoredOffering } from '@/types';
 import { cellMeetingStatusOptions } from '@/types';
 import { format, getYear, getMonth, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { useToast } from '@/hooks/use-toast';
+
 
 interface FormattedCellGroup extends CellGroup {
   formattedLastStatusUpdate?: string;
@@ -33,7 +35,7 @@ const vidaGrowthChartConfig = {
 const offeringChartConfig = {
   totalAmount: {
     label: "Total Arrecadado",
-    color: "hsl(var(--chart-2))", // Usar uma cor diferente
+    color: "hsl(var(--chart-2))", 
   },
 } satisfies ChartConfig;
 
@@ -41,19 +43,23 @@ const reportMonths = [
   { value: "todos", label: "Todos os Meses" },
   ...Array.from({ length: 12 }, (_, i) => ({
     value: (i + 1).toString(),
-    label: format(new Date(2000, i, 1), "MMMM", { locale: ptBR }), // Usar um ano fixo para label do mês
+    label: format(new Date(2000, i, 1), "MMMM", { locale: ptBR }),
   }))
 ];
 
 
 export default function ReportsPage() {
   const { user, mockCellGroups, mockVidas, mockOfferings } = useAuth();
+  const { toast } = useToast();
 
   // Estados para Relatório de Status das Células
   const [filterStatus, setFilterStatus] = useState<CellMeetingStatus | 'todos'>('todos');
   const [filterLider, setFilterLider] = useState('');
   const [filterGeracao, setFilterGeracao] = useState('');
   const [formattedCellGroups, setFormattedCellGroups] = useState<FormattedCellGroup[]>([]);
+  const [totalVidasNoAno, setTotalVidasNoAno] = useState<number | null>(null);
+  const [totalOfertasNoAno, setTotalOfertasNoAno] = useState<string | null>(null);
+
 
   // Estados para Relatório de Crescimento de Vidas
   const [selectedGrowthYear, setSelectedGrowthYear] = useState<string>(() => getYear(new Date()).toString());
@@ -101,7 +107,7 @@ export default function ReportsPage() {
       setAvailableGrowthYears(sortedYears);
       if (!sortedYears.includes(selectedGrowthYear) && sortedYears.length > 0) {
         setSelectedGrowthYear(sortedYears[0]);
-      } else if (sortedYears.length === 0) {
+      } else if (sortedYears.length === 0 && !sortedYears.includes(selectedGrowthYear)) {
         setSelectedGrowthYear(getYear(new Date()).toString());
       }
     } else {
@@ -116,13 +122,16 @@ export default function ReportsPage() {
       count: 0,
     }));
 
+    let countForYear = 0;
     mockVidas.forEach(vida => {
       const vidaDate = new Date(vida.createdAt);
       if (getYear(vidaDate) === year) {
         const monthIndex = getMonth(vidaDate);
         monthlyCounts[monthIndex].count++;
+        countForYear++;
       }
     });
+    setTotalVidasNoAno(countForYear);
     return monthlyCounts;
   }, [mockVidas, selectedGrowthYear]);
 
@@ -134,7 +143,7 @@ export default function ReportsPage() {
       setAvailableReportOfferingYears(sortedYears);
       if (!sortedYears.includes(selectedReportOfferingYear) && sortedYears.length > 0) {
         setSelectedReportOfferingYear(sortedYears[0]);
-      } else if (sortedYears.length === 0) {
+      } else if (sortedYears.length === 0 && !sortedYears.includes(selectedReportOfferingYear)) {
          setSelectedReportOfferingYear(getYear(new Date()).toString());
       }
     } else {
@@ -151,6 +160,13 @@ export default function ReportsPage() {
     });
   }, [mockOfferings, selectedReportOfferingYear, selectedReportOfferingMonth]);
 
+  useEffect(() => {
+    const totalForYear = mockOfferings
+      .filter(o => getYear(new Date(o.date)) === parseInt(selectedReportOfferingYear))
+      .reduce((sum, o) => sum + o.amount, 0);
+    setTotalOfertasNoAno(totalForYear.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+  }, [mockOfferings, selectedReportOfferingYear]);
+
   const reportOfferingChartData = useMemo(() => {
     const year = parseInt(selectedReportOfferingYear);
     const monthlyTotals = Array(12).fill(0).map((_, index) => ({
@@ -160,18 +176,19 @@ export default function ReportsPage() {
 
     filteredReportOfferings.forEach(offering => {
         const offeringDate = new Date(offering.date);
-        if (getYear(offeringDate) === year) { // Double check year, though filteredReportOfferings should already be filtered
+        if (getYear(offeringDate) === year) { 
             const monthIndex = getMonth(offeringDate);
             monthlyTotals[monthIndex].totalAmount += offering.amount;
         }
     });
-    // Filter out months with no offerings IF selectedReportOfferingMonth is not "todos"
-    // For "todos", we show all months of the year, even if zero.
+
     if(selectedReportOfferingMonth !== "todos") {
         const singleMonthIndex = parseInt(selectedReportOfferingMonth) -1;
-        return [monthlyTotals[singleMonthIndex]];
+        if (singleMonthIndex >= 0 && singleMonthIndex < 12) { // Check index validity
+            return [monthlyTotals[singleMonthIndex]];
+        }
+        return []; // Return empty if month index is invalid
     }
-
     return monthlyTotals;
   }, [filteredReportOfferings, selectedReportOfferingYear, selectedReportOfferingMonth]);
   
@@ -179,6 +196,95 @@ export default function ReportsPage() {
     const total = filteredReportOfferings.reduce((sum, o) => sum + o.amount, 0);
     setTotalOfferingsForPeriodDisplay(total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
   }, [filteredReportOfferings]);
+
+  // Função para download de CSV
+  const downloadCSV = (data: any[], filename: string, headersMap?: Record<string, string>) => {
+    if (!data || data.length === 0) {
+      toast({
+        title: "Nenhum Dado",
+        description: "Não há dados para exportar com os filtros atuais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const csvRows = [];
+    const headers = headersMap ? Object.values(headersMap) : Object.keys(data[0]);
+    csvRows.push(headers.join(','));
+
+    for (const row of data) {
+      const values = (headersMap ? Object.keys(headersMap) : Object.keys(data[0])).map(key => {
+        const rawValue = row[key];
+        // Se o valor for uma data, formatar. Adicionar mais formatações se necessário.
+        let value = rawValue;
+        if (rawValue instanceof Date) {
+          value = format(rawValue, "dd/MM/yyyy", { locale: ptBR });
+        } else if (key === 'amount' && typeof rawValue === 'number') { // Formatar valor monetário
+           value = rawValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+        
+        const escaped = ('' + (value ?? '')).replace(/"/g, '""'); // Lidar com undefined/null
+        return `"${escaped}"`;
+      });
+      csvRows.push(values.join(','));
+    }
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' }); // Adiciona BOM para Excel
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Download Iniciado",
+        description: `${filename} está sendo baixado.`,
+      });
+    }
+  };
+
+  const handleDownloadCellStatusCSV = () => {
+    const dataToExport = formattedCellGroups.map(cg => ({
+      nome: cg.name,
+      lider: cg.liderNome || 'N/A',
+      geracao: cg.geracao || 'N/A',
+      diaHora: `${cg.meetingDay || ''}, ${cg.meetingTime || ''}`,
+      status: cg.statusLabel || 'N/A',
+      motivo: cg.meetingStatusReason || '',
+      ultimaAtualizacao: cg.formattedLastStatusUpdate || 'N/A',
+    }));
+    const headers = {
+      nome: "Nome da Célula",
+      lider: "Líder",
+      geracao: "Geração",
+      diaHora: "Dia/Hora Reunião",
+      status: "Status Reunião",
+      motivo: "Motivo",
+      ultimaAtualizacao: "Última Atualização"
+    };
+    downloadCSV(dataToExport, "relatorio_status_celulas.csv", headers);
+  };
+
+  const handleDownloadOfferingsCSV = () => {
+    const dataToExport = filteredReportOfferings.map(o => ({
+      date: o.date, // Será formatado dentro de downloadCSV
+      cellGroupName: o.cellGroupName || 'Oferta Geral',
+      amount: o.amount, // Será formatado dentro de downloadCSV
+      notes: o.notes || '',
+    }));
+     const headers = {
+      date: "Data",
+      cellGroupName: "Célula/Origem",
+      amount: "Valor (R$)",
+      notes: "Notas"
+    };
+    downloadCSV(dataToExport, `relatorio_ofertas_${selectedReportOfferingMonth}_${selectedReportOfferingYear}.csv`, headers);
+  };
 
 
   if (user?.role !== 'missionario') {
@@ -278,6 +384,12 @@ export default function ReportsPage() {
             </div>
           )}
         </CardContent>
+        <CardFooter>
+          <Button onClick={handleDownloadCellStatusCSV} variant="outline" size="sm" disabled={formattedCellGroups.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Baixar CSV Status das Células
+          </Button>
+        </CardFooter>
       </Card>
 
       <Card>
@@ -320,6 +432,15 @@ export default function ReportsPage() {
             </div>
           )}
         </CardContent>
+         <CardFooter>
+            {totalVidasNoAno !== null ? (
+                 <p className="text-sm text-muted-foreground font-body">
+                    Total de Novas Vidas em {selectedGrowthYear}: <span className="font-semibold text-primary">{totalVidasNoAno}</span>.
+                </p>
+            ) : (
+                <Skeleton className="h-5 w-48" />
+            )}
+        </CardFooter>
       </Card>
 
       <Card>
@@ -361,7 +482,7 @@ export default function ReportsPage() {
           </div>
           
           <div className="p-4 border rounded-lg">
-            <h3 className="font-headline text-lg">Total Arrecadado no Período</h3>
+            <h3 className="font-headline text-lg">Total Arrecadado no Período Filtrado</h3>
             {totalOfferingsForPeriodDisplay === null ? (
                 <Skeleton className="h-8 w-32 mt-1" />
             ) : (
@@ -408,13 +529,27 @@ export default function ReportsPage() {
             </div>
           )}
         </CardContent>
-         <CardFooter>
-            <p className="text-xs text-muted-foreground font-body">
-              Este relatório detalha as ofertas recebidas no período selecionado.
-            </p>
+         <CardFooter className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
+            <div>
+                 {totalOfertasNoAno !== null ? (
+                    <p className="text-sm text-muted-foreground font-body">
+                        Total Arrecadado no Ano de {selectedReportOfferingYear}: <span className="font-semibold text-primary">{totalOfertasNoAno}</span>.
+                    </p>
+                    ) : (
+                    <Skeleton className="h-5 w-56" />
+                )}
+                <p className="text-xs text-muted-foreground font-body mt-1">
+                Este relatório detalha as ofertas recebidas no período selecionado.
+                </p>
+            </div>
+            <Button onClick={handleDownloadOfferingsCSV} variant="outline" size="sm" disabled={filteredReportOfferings.length === 0} className="mt-2 sm:mt-0">
+                <Download className="mr-2 h-4 w-4" />
+                Baixar CSV Detalhado de Ofertas
+            </Button>
         </CardFooter>
       </Card>
 
     </div>
   );
 }
+
