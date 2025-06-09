@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,13 +11,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
-import { PlusCircle, Edit, ArrowUpCircle } from "lucide-react";
+import { PlusCircle, Edit, ArrowUpCircle, Filter, Search, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import type { Vida, VidaStatus } from "@/types";
+import { vidaStatusOptions } from "@/types";
 
 const vidaSchema = z.object({
   nomeCompleto: z.string().min(3, { message: "Nome completo deve ter pelo menos 3 caracteres." }),
@@ -35,6 +37,10 @@ export default function VidasPage() {
   const { toast } = useToast();
   const { user, mockVidas, mockCellGroups, addMockVida, updateMockVida } = useAuth();
 
+  const [searchTermName, setSearchTermName] = useState("");
+  const [searchTermCellName, setSearchTermCellName] = useState("");
+  const [filterStatus, setFilterStatus] = useState<VidaStatus | "todos">("todos");
+
   const form = useForm<VidaFormValues>({
     resolver: zodResolver(vidaSchema),
     defaultValues: {
@@ -46,9 +52,8 @@ export default function VidasPage() {
     },
   });
 
-  // Effect to set default cell for leaders or reset form when user changes
   useEffect(() => {
-    if (!editingVida) { // Only apply default or reset if not editing
+    if (!editingVida) {
         form.reset({
             nomeCompleto: "",
             dataNascimento: undefined,
@@ -59,7 +64,6 @@ export default function VidasPage() {
     }
   }, [user?.role, user?.cellGroupId, editingVida, form]);
 
-  // Effect to populate form when editingVida changes
   useEffect(() => {
     if (editingVida) {
       form.reset({
@@ -71,9 +75,7 @@ export default function VidasPage() {
       });
       setIsDialogOpen(true);
     } else {
-      // Reset to defaults if editingVida is null (e.g., after closing an edit dialog without saving, or clicking "Add New")
-      // This is now handled by the effect above to centralize reset logic
-       if (isDialogOpen && !editingVida) { // Only reset if dialog was meant to be for new and it's open
+       if (isDialogOpen && !editingVida) { 
          form.reset({
             nomeCompleto: "",
             dataNascimento: undefined,
@@ -124,7 +126,6 @@ export default function VidasPage() {
 
   const handleEdit = (vida: Vida) => {
     setEditingVida(vida);
-    // setIsDialogOpen(true); // Dialog open is handled by useEffect on editingVida
   };
   
   const handlePromote = (vida: Vida) => {
@@ -135,9 +136,25 @@ export default function VidasPage() {
     return differenceInYears(new Date(), new Date(birthDate));
   };
 
-  const filteredVidas = user?.role === 'lider_de_celula' && user.cellGroupId 
-    ? mockVidas.filter(v => v.idCelula === user.cellGroupId)
-    : mockVidas;
+  const baseVidasList = useMemo(() => {
+    return user?.role === 'lider_de_celula' && user.cellGroupId 
+      ? mockVidas.filter(v => v.idCelula === user.cellGroupId)
+      : mockVidas;
+  }, [mockVidas, user?.role, user?.cellGroupId]);
+
+  const filteredVidas = useMemo(() => {
+    return baseVidasList.filter(vida => {
+      const nameMatch = vida.nomeCompleto.toLowerCase().includes(searchTermName.toLowerCase());
+      const cellNameMatch = user?.role === 'missionario' 
+        ? (vida.nomeCelula || vida.idCelula || '').toLowerCase().includes(searchTermCellName.toLowerCase())
+        : true; // Líderes não filtram por nome de célula aqui, pois já está pré-filtrado.
+      const statusMatch = filterStatus === "todos" || vida.status === filterStatus;
+      return nameMatch && cellNameMatch && statusMatch;
+    });
+  }, [baseVidasList, searchTermName, searchTermCellName, filterStatus, user?.role]);
+
+  const allStatusOptions = [{ value: "todos", label: "Todos os Status" }, ...vidaStatusOptions];
+
 
   return (
     <div className="space-y-6">
@@ -148,7 +165,7 @@ export default function VidasPage() {
         <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { 
             setIsDialogOpen(isOpen); 
             if (!isOpen) {
-                setEditingVida(null); // Ensure editingVida is reset when dialog closes
+                setEditingVida(null); 
             }
         }}>
           <DialogTrigger asChild>
@@ -232,9 +249,9 @@ export default function VidasPage() {
                           <SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="membro">Membro</SelectItem>
-                          <SelectItem value="lider_em_treinamento">Líder em Treinamento</SelectItem>
-                          <SelectItem value="lider_ativo">Líder Ativo</SelectItem>
+                          {vidaStatusOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -250,6 +267,59 @@ export default function VidasPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Filter className="h-5 w-5"/>
+            <CardTitle className="font-headline">Filtros de Vidas</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="filter-vida-name" className="font-body">Nome da Vida</Label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input 
+                id="filter-vida-name" 
+                placeholder="Buscar por nome..." 
+                value={searchTermName} 
+                onChange={(e) => setSearchTermName(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
+          {user?.role === 'missionario' && (
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-cell-name" className="font-body">Nome da Célula</Label>
+               <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input 
+                    id="filter-cell-name" 
+                    placeholder="Buscar por célula..." 
+                    value={searchTermCellName} 
+                    onChange={(e) => setSearchTermCellName(e.target.value)} 
+                    className="pl-8"
+                />
+              </div>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="filter-vida-status" className="font-body">Status da Vida</Label>
+            <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as VidaStatus | "todos")}>
+              <SelectTrigger id="filter-vida-status">
+                <SelectValue placeholder="Todos os status" />
+              </SelectTrigger>
+              <SelectContent>
+                {allStatusOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">
@@ -260,9 +330,15 @@ export default function VidasPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredVidas.length === 0 ? (
-             <div className="mt-4 p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-              Nenhuma vida cadastrada para os filtros atuais.
+          {baseVidasList.length === 0 ? (
+             <div className="mt-4 p-8 border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-center text-muted-foreground space-y-3">
+                <Users className="w-12 h-12 text-primary/70" />
+                <p className="font-medium">Nenhuma vida cadastrada ainda.</p>
+                <p className="text-sm">Clique em "Adicionar Vida" para começar.</p>
+             </div>
+          ) : filteredVidas.length === 0 ? (
+             <div className="mt-4 p-8 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
+              Nenhuma vida encontrada com os filtros atuais.
              </div>
           ) : (
             <Table>
@@ -283,17 +359,17 @@ export default function VidasPage() {
                     <TableCell className="font-medium">{vida.nomeCompleto}</TableCell>
                     <TableCell>{calculateAge(vida.dataNascimento)}</TableCell>
                     <TableCell>{vida.nomeCelula || vida.idCelula}</TableCell>
-                    <TableCell>{vida.geracaoCelula || 'N/A'}</TableCell>
+                    <TableCell>{vida.geracaoCelula || <span className="italic text-muted-foreground">N/A</span>}</TableCell>
                     <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                            vida.status === 'lider_ativo' ? 'bg-green-100 text-green-700' :
-                            vida.status === 'lider_em_treinamento' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-blue-100 text-blue-700'
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                            vida.status === 'lider_ativo' ? 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100' :
+                            vida.status === 'lider_em_treinamento' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100' :
+                            'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-100'
                         }`}>
-                            {vida.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {vidaStatusOptions.find(opt => opt.value === vida.status)?.label || vida.status}
                         </span>
                     </TableCell>
-                    <TableCell>{vida.telefone || "-"}</TableCell>
+                    <TableCell>{vida.telefone || <span className="italic text-muted-foreground">N/A</span>}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="sm" onClick={() => handlePromote(vida)} disabled={user?.role === 'lider_de_celula'}>
                         <ArrowUpCircle className="mr-1 h-3 w-3" /> Liderança
@@ -306,10 +382,11 @@ export default function VidasPage() {
                 ))}
               </TableBody>
                <TableCaption>
-                Exibindo {filteredVidas.length} de {mockVidas.length} vidas.
+                Exibindo {filteredVidas.length} de {baseVidasList.length} vidas
                 {user?.role === 'lider_de_celula' && (!user.cellGroupName || !user.cellGroupId) && 
                   <p className="text-destructive text-sm mt-2">Líder não associado a uma célula específica.</p>
-                }
+                }.
+                {mockVidas.length > baseVidasList.length && ` (Total geral: ${mockVidas.length} vidas).`}
               </TableCaption>
             </Table>
           )}

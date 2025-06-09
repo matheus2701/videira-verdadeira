@@ -16,6 +16,13 @@ export interface User {
 
 export type VidaStatus = 'membro' | 'lider_em_treinamento' | 'lider_ativo';
 
+// Opções para o select de status de Vida e para exibição amigável.
+export const vidaStatusOptions: { value: VidaStatus; label: string }[] = [
+  { value: 'membro', label: 'Membro' },
+  { value: 'lider_em_treinamento', label: 'Líder em Treinamento' },
+  { value: 'lider_ativo', label: 'Líder Ativo' },
+];
+
 // Representa um indivíduo na igreja, seus detalhes pessoais e afiliação à célula.
 export interface Vida {
   id: string; // ID único da Vida
@@ -32,6 +39,7 @@ export interface Vida {
 
 export type CellMeetingStatus = 'agendada' | 'aconteceu' | 'nao_aconteceu_com_aviso' | 'nao_aconteceu_sem_aviso' | 'cancelada_com_aviso';
 
+// Opções para o select de status de reunião de célula e para exibição amigável.
 export const cellMeetingStatusOptions: { value: CellMeetingStatus; label: string }[] = [
   { value: 'agendada', label: 'Agendada' },
   { value: 'aconteceu', label: 'Aconteceu' },
