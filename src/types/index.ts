@@ -12,6 +12,7 @@ export interface User {
   vidaId?: string; // ID da Vida associada, se o usuário for um líder de célula
   cellGroupId?: string; // ID da célula que o líder (User) lidera
   cellGroupName?: string; // Nome da célula para exibição rápida
+  isActive?: boolean; // Adicionado para gerenciar status de acesso
 }
 
 export type VidaStatus = 'membro' | 'lider_em_treinamento' | 'lider_ativo';
@@ -84,7 +85,7 @@ export interface EncounterTeam {
   eventDate?: Date;
   description?: string;
   createdAt: Date;
-  organizerUserId?: string; 
+  organizerUserId?: string;
   organizerUserName?: string;
 }
 
@@ -113,4 +114,49 @@ export type OfferingFormValues = z.infer<typeof offeringSchema>;
 // Representa uma oferta registrada e armazenada no sistema.
 export interface StoredOffering extends OfferingFormValues {
   id: string;
+}
+
+// Tipos para Casas de Paz e Lições
+export interface Lesson {
+  id: string; // ex: "l1", "l2"
+  title: string;
+  completed: boolean;
+}
+
+export const peaceHouseLessonTitles: string[] = [
+  "Quando Jesus entra em minha casa a verdadeira paz é estabelecida",
+  "Quando Jesus entra em minha casa decisões corretas são tomadas",
+  "Quando Jesus entra em minha casa o perdão é liberado",
+  "Quando Jesus entra em minha casa ressurreições acontecem",
+  "Quando Jesus entra em minha casa pessoas são curadas",
+  "Quando Jesus entra em minha casa limitações são vencidas",
+  "Quando Jesus entra em minha casa pessoas são salvas",
+  "Meu coração a principal casa a ser conquistada",
+];
+
+export function getDefaultLessons(): Lesson[] {
+  return peaceHouseLessonTitles.map((title, index) => ({
+    id: `l${index + 1}`,
+    title: title,
+    completed: false,
+  }));
+}
+
+export const peaceHouseFormSchema = z.object({
+  responsibleCellGroup: z.string().min(3, { message: "Nome do grupo deve ter pelo menos 3 caracteres." }),
+  scheduledDate: z.date({ required_error: "Data de agendamento é obrigatória." }),
+  location: z.string().min(5, { message: "Local deve ter pelo menos 5 caracteres." }),
+  hostName: z.string().min(3, { message: "Nome do anfitrião deve ter pelo menos 3 caracteres." }),
+  hostContact: z.string().min(10, { message: "Contato do anfitrião inválido." }).regex(/^\s*(\(?\d{2}\)?\s?)?(\d{4,5}-?\d{4})\s*$/, { message: "Formato de telefone inválido."}),
+  designatedTeams: z.string().optional(),
+  expectedParticipants: z.coerce.number().int().nonnegative({ message: "Deve ser um número não negativo." }).optional(),
+});
+export type PeaceHouseFormValues = z.infer<typeof peaceHouseFormSchema>;
+
+export interface PeaceHouse extends PeaceHouseFormValues {
+  id: string;
+  createdAt: Date;
+  lessonsProgress: Lesson[];
+  isCompleted?: boolean; // Para marcar se todas as lições da casa de paz foram concluídas
+  responsibleCellGroupId?: string; // Opcional: ID da célula para ligação mais forte
 }
