@@ -36,7 +36,7 @@ const newLiderSchema = z.object({
   }),
   cellGroupId: z.string({ required_error: 'Selecione a célula que este líder irá liderar.' }),
   email: z.string().email({ message: "Formato de e-mail inválido." }),
-  password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres." }), // Mínimo para simular campo
+  password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres." }),
 });
 
 type NewLiderFormValues = z.infer<typeof newLiderSchema>;
@@ -73,7 +73,6 @@ export default function NovoLiderPage() {
 
   const cellGroupsDisponiveis = mockCellGroups.filter(cg => cg && cg.id);
 
-  // Preencher o campo de e-mail se uma vida já tiver um usuário associado
   const selectedVidaId = form.watch('vidaId');
   useEffect(() => {
     if (selectedVidaId) {
@@ -83,7 +82,6 @@ export default function NovoLiderPage() {
         if (existingUser && existingUser.email) {
           form.setValue('email', existingUser.email);
         } else {
-          // Opcional: Gerar e-mail padrão se não houver usuário, ou deixar em branco
            form.setValue('email', `${vida.nomeCompleto.toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '')}@videira.app`);
         }
       }
@@ -104,7 +102,7 @@ export default function NovoLiderPage() {
       return;
     }
 
-    // 1. Atualizar o status da Vida
+    // 1. Atualizar o status da Vida e associação com a célula
     const vidaAtualizada: Vida = {
       ...vidaSelecionada,
       status: data.novoStatus as VidaStatus,
@@ -112,47 +110,56 @@ export default function NovoLiderPage() {
       nomeCelula: celulaSelecionada.name,
       geracaoCelula: celulaSelecionada.geracao,
     };
-    updateMockVida(vidaAtualizada);
+    updateMockVida(vidaAtualizada); // Esta função também pode lidar com atualizações de User se a vida se torna líder
     
-    // 2. Atualizar a Célula com o novo líder
-    const oldLiderVidaId = celulaSelecionada.liderVidaId; // Captura o ID do líder antigo da célula
+    // 2. Atualizar a Célula com o novo líder e desvincular o líder antigo, se houver
+    const oldLiderVidaId = celulaSelecionada.liderVidaId; 
     const celulaAtualizada: CellGroup = {
       ...celulaSelecionada,
       liderVidaId: vidaSelecionada.id,
       liderNome: vidaSelecionada.nomeCompleto,
     };
-    updateMockCellGroup(celulaAtualizada, oldLiderVidaId); // Passa o ID do líder antigo, se houver
+    updateMockCellGroup(celulaAtualizada, oldLiderVidaId); 
     
-    // 3. Criar/atualizar o User no AuthContext
+    // 3. Criar/atualizar o User no AuthContext para o novo líder
+    // A função updateMockVida e updateMockCellGroup (via AuthContext) já devem ter
+    // lidado com a criação/atualização do User do novo líder e a atualização do estado do usuário logado,
+    // se o usuário logado for o novo líder.
+    // A lógica abaixo pode ser simplificada ou removida se as funções do AuthContext forem robustas.
+    // Vamos verificar se o User já existe para o vidaId.
     let userParaAuth = mockUsers.find(u => u.vidaId === vidaSelecionada.id);
     const userRole: Role = 'lider_de_celula';
 
     if (userParaAuth) { 
-      const updatedUser = {
+      // Se o User existe, atualiza-o
+      const updatedUser: AuthUser = {
         ...userParaAuth,
-        name: vidaSelecionada.nomeCompleto, // Sincronizar nome
-        email: data.email, // Usar e-mail do formulário
+        name: vidaSelecionada.nomeCompleto,
+        email: data.email,
         role: userRole,
         cellGroupId: celulaAtualizada.id,
         cellGroupName: celulaAtualizada.name,
-        isActive: true, // Garante que está ativo ao ser promovido/atualizado
+        isActive: true, 
       };
       updateMockUser(updatedUser); 
+      // Se o usuário logado for este líder, atualiza o estado do usuário logado
       if (currentUser && currentUser.id === updatedUser.id) {
         setUser(updatedUser); 
       }
     } else { 
+      // Se o User não existe, cria um novo
       const newUser: AuthUser = {
         id: `user-${vidaSelecionada.id}-${Date.now()}`,
         name: vidaSelecionada.nomeCompleto,
-        email: data.email, // Usar e-mail do formulário
+        email: data.email,
         role: userRole,
         vidaId: vidaSelecionada.id,
         cellGroupId: celulaAtualizada.id,
         cellGroupName: celulaAtualizada.name,
-        isActive: true, // Ativo por padrão
+        isActive: true,
       };
       addMockUser(newUser); 
+      // Se, por algum motivo, o currentUser é identificado pelo vidaId (improvável aqui, mas por segurança)
       if (currentUser && currentUser.vidaId === newUser.vidaId) { 
         setUser(newUser);
       }
@@ -311,4 +318,3 @@ export default function NovoLiderPage() {
     </div>
   );
 }
-

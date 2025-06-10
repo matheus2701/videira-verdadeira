@@ -27,7 +27,7 @@ const myCellGroupSchema = z.object({
   name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres." }),
   address: z.string().min(5, { message: "Endereço deve ter pelo menos 5 caracteres." }),
   meetingDay: z.string({ required_error: "Selecione o dia da reunião." }),
-  meetingTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Horário inválido (HH:MM)." }),
+  meetingTime: z.string().regex(/^([01]\\d|2[0-3]):([0-5]\\d)$/, { message: "Horário inválido (HH:MM)." }),
   geracao: z.string().optional(),
 });
 
@@ -69,8 +69,6 @@ export default function MyCellPage() {
     if (currentCellDetails) {
       return currentCellDetails;
     }
-    // Se o líder não tem uma célula ainda, ou a célula não foi encontrada (improvável com mocks),
-    // cria dados de fallback para exibição e para o formulário.
     if (user && user.role === 'lider_de_celula') {
       const defaultLeaderCellName = user.name ? `Célula de ${user.name}` : "Minha Célula (Nova)";
       return {
@@ -85,23 +83,21 @@ export default function MyCellPage() {
         lastStatusUpdate: new Date(),
       };
     }
-    // Retorno para caso user seja null ou não líder, embora a página tenha guarda para isso.
     return {} as Partial<CellGroup>; 
   }, [currentCellDetails, user]);
 
 
   const form = useForm<MyCellGroupFormValues>({
     resolver: zodResolver(myCellGroupSchema),
-    defaultValues: {}, // Será preenchido pelo useEffect
+    defaultValues: {},
   });
 
   const statusForm = useForm<WeeklyStatusFormValues>({
     resolver: zodResolver(weeklyStatusSchema),
-    defaultValues: {}, // Será preenchido pelo useEffect
+    defaultValues: {},
   });
   
   useEffect(() => {
-    // Reset forms quando myCellDataForForm (que depende de currentCellDetails e user) mudar.
     form.reset({
         name: myCellDataForForm.name || "",
         address: myCellDataForForm.address || "",
@@ -126,14 +122,13 @@ export default function MyCellPage() {
          return;
     }
     
-    // Base os dados na célula atual ou nos dados do formulário de fallback
     const baseCellData = currentCellDetails || myCellDataForForm;
 
     const updatedCell: CellGroup = {
       ...baseCellData,
       ...values,
       id: cellIdToUpdate, 
-      liderVidaId: user.vidaId, // Garante que o líder da célula é o usuário logado
+      liderVidaId: user.vidaId, 
       liderNome: user.name, 
       meetingStatus: baseCellData.meetingStatus || 'agendada',
       lastStatusUpdate: baseCellData.lastStatusUpdate || new Date(),
@@ -141,14 +136,13 @@ export default function MyCellPage() {
 
     updateMockCellGroup(updatedCell); 
 
-    // Se o líder não tinha cellGroupId (primeira edição de uma "nova" célula, com temp-id),
-    // atualize o user no AuthContext para refletir o cellGroupId (mesmo que seja o temp-id por enquanto)
-    // e o novo nome da célula. A função updateMockCellGroup no AuthContext já trata de atualizar o user
-    // se o user.cellGroupId já existir e o nome da célula mudar.
-    if (!user.cellGroupId && cellIdToUpdate.startsWith('temp-id-') && user.role === 'lider_de_celula') {
-         setUser({ ...user, cellGroupId: updatedCell.id, cellGroupName: updatedCell.name });
-    }
-
+    // A lógica de atualizar o 'user' (incluindo cellGroupId e cellGroupName)
+    // agora é tratada centralmente pelo AuthContext.updateMockCellGroup.
+    // A linha abaixo foi removida pois era redundante ou poderia causar
+    // atualizações de estado dessincronizadas.
+    // if (!user.cellGroupId && cellIdToUpdate.startsWith('temp-id-') && user.role === 'lider_de_celula') {
+    //      setUser({ ...user, cellGroupId: updatedCell.id, cellGroupName: updatedCell.name });
+    // }
 
     toast({
       title: "Sucesso!",
@@ -195,15 +189,12 @@ export default function MyCellPage() {
     );
   }
   
-  // Se o líder não tem um cellGroupId E o myCellDataForForm.id não é um ID temporário,
-  // significa que ele não tem célula associada e não estamos no fluxo de "criar a primeira célula".
   if (!user.cellGroupId && !myCellDataForForm.id?.startsWith('temp-id-')) { 
      return (
       <div className="flex flex-col items-center justify-center h-full">
         <ShieldAlert className="w-16 h-16 text-yellow-500 mb-4" />
         <h1 className="font-headline text-3xl font-semibold mb-2">Célula Não Associada</h1>
         <p className="text-muted-foreground text-center">Você não está associado a uma célula específica.<br/>Pode ser necessário que um administrador (Missionário) crie sua célula ou o associe a uma existente, ou você pode preencher os dados abaixo para configurar sua célula.</p>
-        {/* O formulário abaixo ainda funciona para permitir que ele crie/defina sua célula */}
       </div>
     );
   }
@@ -376,4 +367,3 @@ export default function MyCellPage() {
     </div>
   );
 }
-

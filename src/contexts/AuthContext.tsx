@@ -151,27 +151,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateMockVida = useCallback((updatedVida: Vida) => {
     setVidasData(prev => prev.map(v => v.id === updatedVida.id ? updatedVida : v));
 
+    // Se a Vida atualizada for um líder, sincronize com CellGroups e Users
     if (updatedVida.status === 'lider_ativo' || updatedVida.status === 'lider_em_treinamento') {
+      // Atualiza a célula que esta Vida lidera
       if (updatedVida.idCelula) {
         setCellGroupsData(prevCGs => prevCGs.map(cg => {
+          // Se esta célula é a que a Vida atualizada lidera
           if (cg.id === updatedVida.idCelula) {
             return { ...cg, liderVidaId: updatedVida.id, liderNome: updatedVida.nomeCompleto };
           }
+          // Se esta célula era liderada pela Vida atualizada, mas agora a Vida lidera outra célula
           if (cg.liderVidaId === updatedVida.id && cg.id !== updatedVida.idCelula) {
-            return { ...cg, liderVidaId: undefined, liderNome: undefined };
+            return { ...cg, liderVidaId: undefined, liderNome: undefined }; // Remove o líder
           }
           return cg;
         }));
       }
+      // Atualiza ou cria o User correspondente
       setUsersData(prevUsers => prevUsers.map(u => {
         if (u.vidaId === updatedVida.id) {
           const updatedAuthUser = {
             ...u,
-            role: 'lider_de_celula' as Role,
+            role: 'lider_de_celula' as Role, // Garante o papel correto
             cellGroupId: updatedVida.idCelula || undefined,
             cellGroupName: updatedVida.nomeCelula || undefined,
-            name: updatedVida.nomeCompleto,
+            name: updatedVida.nomeCompleto, // Sincroniza nome
           };
+          // Se o usuário atual é o que está sendo modificado, atualiza o estado do usuário logado
           if (user && user.id === u.id) {
             setUser(updatedAuthUser);
           }
@@ -180,16 +186,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return u;
       }));
     } else if (updatedVida.status === 'membro') {
+        // Se a Vida foi rebaixada para membro, remove-a como líder de qualquer célula
         setCellGroupsData(prevCGs => prevCGs.map(cg => {
           if (cg.liderVidaId === updatedVida.id) {
             return { ...cg, liderVidaId: undefined, liderNome: undefined };
           }
           return cg;
         }));
+        // E atualiza o usuário para não ter mais cellGroupId/cellGroupName (se era líder)
         setUsersData(prevUsers => prevUsers.map(u => {
           if (u.vidaId === updatedVida.id && u.role === 'lider_de_celula') {
+             // Não muda o role aqui, apenas desvincula da célula. O role seria mudado em outro fluxo, se necessário.
              const updatedAuthUser = {...u, cellGroupId: undefined, cellGroupName: undefined};
-             if (user && user.id === u.id) {
+             if (user && user.id === u.id) { // Se for o usuário logado
                 setUser(prevUser => prevUser ? {...prevUser, cellGroupId: undefined, cellGroupName: undefined } : null);
              }
              return updatedAuthUser;
@@ -204,15 +213,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateMockCellGroup = useCallback((updatedCG: CellGroup, oldLiderVidaId?: string) => {
-    setCellGroupsData(prevCGs => {
-      const newGroups = prevCGs.map(cg => cg.id === updatedCG.id ? updatedCG : cg);
-      if (user?.role === 'lider_de_celula' && user.cellGroupId === updatedCG.id && user.cellGroupName !== updatedCG.name) {
-        setUser(prevUser => prevUser ? {...prevUser, cellGroupName: updatedCG.name} : null);
-      }
-      return newGroups;
-    });
+    setCellGroupsData(prevCGs => prevCGs.map(cg => cg.id === updatedCG.id ? updatedCG : cg));
 
+    // Se um novo líder foi definido para updatedCG
     if (updatedCG.liderVidaId) {
+      // Atualiza a Vida do novo líder para refletir a associação com esta célula
       setVidasData(prevVidas => prevVidas.map(v => {
         if (v.id === updatedCG.liderVidaId) {
           return {
@@ -220,11 +225,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             idCelula: updatedCG.id,
             nomeCelula: updatedCG.name,
             geracaoCelula: updatedCG.geracao,
+            // Garante que o status seja de liderança, se não for.
             status: v.status !== 'lider_ativo' && v.status !== 'lider_em_treinamento' ? 'lider_ativo' as VidaStatus : v.status,
           };
         }
         return v;
       }));
+      // Atualiza o User do novo líder
       setUsersData(prevUsers => prevUsers.map(u => {
         if (u.vidaId === updatedCG.liderVidaId) {
           const updatedAuthUser = {
@@ -232,9 +239,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: 'lider_de_celula' as Role,
             cellGroupId: updatedCG.id,
             cellGroupName: updatedCG.name,
-            name: updatedCG.liderNome || u.name,
-            isActive: u.isActive === undefined ? true : u.isActive, // Preserva ou define como ativo
+            name: updatedCG.liderNome || u.name, // Atualiza o nome do User com o nome do líder da célula
+            isActive: u.isActive === undefined ? true : u.isActive, // Garante que está ativo
           };
+          // Se o usuário logado é este novo líder, atualiza o estado do usuário logado
           if (user && user.id === u.id) {
             setUser(updatedAuthUser);
           }
@@ -244,17 +252,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }));
     }
 
+    // Se havia um líder antigo e ele é diferente do novo líder (ou se o novo líder é undefined)
     if (oldLiderVidaId && oldLiderVidaId !== updatedCG.liderVidaId) {
+        // Remove a célula da Vida do líder antigo
         setVidasData(prevVidas => prevVidas.map(v => {
-            if (v.id === oldLiderVidaId && v.idCelula === updatedCG.id) { // Garante que está removendo da célula correta
+            if (v.id === oldLiderVidaId && v.idCelula === updatedCG.id) {
                 return { ...v, idCelula: '', nomeCelula: '', geracaoCelula: '' }; // Remove da célula
             }
             return v;
         }));
+        // Remove a célula do User do líder antigo
         setUsersData(prevUsers => prevUsers.map(u => {
-            if (u.vidaId === oldLiderVidaId && u.cellGroupId === updatedCG.id) { // Garante que está atualizando o usuário correto
+            if (u.vidaId === oldLiderVidaId && u.cellGroupId === updatedCG.id) {
                  const updatedAuthUser = { ...u, cellGroupId: undefined, cellGroupName: undefined };
-                 if (user && user.id === u.id) {
+                 if (user && user.id === u.id) { // Se o usuário logado for o líder antigo
                     setUser(updatedAuthUser);
                  }
                 return updatedAuthUser;
@@ -267,19 +278,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addMockCellGroup = useCallback((newCG: CellGroup) => {
     setCellGroupsData(prev => [{...newCG, lastStatusUpdate: newCG.lastStatusUpdate || new Date()}, ...prev]);
-  }, []);
+    // Se um líder foi atribuído na criação da célula, precisamos atualizar a Vida e o User desse líder.
+    if (newCG.liderVidaId) {
+        updateMockCellGroup(newCG); // Chama update para lidar com a lógica de atribuição do líder
+    }
+  }, [updateMockCellGroup]);
 
   const addMockUser = useCallback((newUser: User) => {
     setUsersData(prev => {
+      // Verifica se já existe um usuário com o mesmo vidaId para evitar duplicatas de User para a mesma Vida
       const existingUserIndex = prev.findIndex(u => u.vidaId && newUser.vidaId && u.vidaId === newUser.vidaId);
       if (existingUserIndex !== -1) {
+        // Se existe, atualiza o usuário existente
         const updatedUsers = [...prev];
         updatedUsers[existingUserIndex] = {...updatedUsers[existingUserIndex], ...newUser, isActive: newUser.isActive ?? updatedUsers[existingUserIndex].isActive ?? true};
+        // Se o usuário atualizado é o usuário logado, atualiza o estado do usuário logado
         if (user && user.id === updatedUsers[existingUserIndex].id) {
           setUser(updatedUsers[existingUserIndex]);
         }
         return updatedUsers;
       }
+      // Se não existe, adiciona o novo usuário
       return [{...newUser, isActive: newUser.isActive ?? true}, ...prev];
     });
   }, [user]);
@@ -288,6 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsersData(prev => prev.map(u => {
       if (u.id === updatedUser.id) {
         const mergedUser = {...u, ...updatedUser, isActive: updatedUser.isActive ?? u.isActive ?? true };
+        // Se o usuário atualizado é o usuário logado, atualiza o estado do usuário logado
         if (user && user.id === updatedUser.id) {
           setUser(mergedUser);
         }
@@ -309,9 +329,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsersData(prevUsers =>
       prevUsers.map(u => {
         if (u.id === userId) {
-          const newActiveStatus = u.isActive === undefined ? false : !u.isActive;
+          const newActiveStatus = u.isActive === undefined ? false : !u.isActive; // Default to active if undefined, then toggle
           const updatedUser = { ...u, isActive: newActiveStatus };
-          if (user && user.id === userId) {
+          if (user && user.id === userId) { // Se o usuário logado é o que está sendo alterado
             setUser(updatedUser);
           }
           return updatedUser;
@@ -349,5 +369,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-    
