@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { AuthProvider } from '@/contexts/AuthContext'; // Importar AuthProvider
 
 export const metadata: Metadata = {
   title: 'Videira Verdadeira',
@@ -23,13 +24,15 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <ThemeProvider
-          defaultTheme="system"
-          storageKey="videira-theme"
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        <AuthProvider> {/* AuthProvider envolve ThemeProvider e children */}
+          <ThemeProvider
+            defaultTheme="system"
+            storageKey="videira-theme"
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
