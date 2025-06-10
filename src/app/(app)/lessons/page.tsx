@@ -23,21 +23,21 @@ interface PeaceChildProgress {
   lessons: Lesson[];
 }
 
-// Dados mock locais
+// Dados mock locais com os títulos atualizados
 const initialPeaceChildrenProgress: PeaceChildProgress[] = [
   {
     id: "pcp1",
     name: "Família Silva (Casa da Paz)",
     cellGroupName: "Discípulos de Cristo",
     lessons: [
-      { id: "l1", title: "Lição 1: O Amor de Deus", completed: true },
-      { id: "l2", title: "Lição 2: O Pecado e suas Consequências", completed: true },
-      { id: "l3", title: "Lição 3: Jesus, a Única Solução", completed: false },
-      { id: "l4", title: "Lição 4: Fé e Arrependimento", completed: false },
-      { id: "l5", title: "Lição 5: O Novo Nascimento", completed: false },
-      { id: "l6", title: "Lição 6: O Batismo nas Águas", completed: false },
-      { id: "l7", title: "Lição 7: Vida no Espírito", completed: false },
-      { id: "l8", title: "Lição 8: A Igreja, Corpo de Cristo", completed: false },
+      { id: "l1", title: "Quando Jesus entra em minha casa a verdadeira paz é estabelecida", completed: true },
+      { id: "l2", title: "Quando Jesus entra em minha casa decisões corretas são tomadas", completed: true },
+      { id: "l3", title: "Quando Jesus entra em minha casa o perdão é liberado", completed: false },
+      { id: "l4", title: "Quando Jesus entra em minha casa ressurreições acontecem", completed: false },
+      { id: "l5", title: "Quando Jesus entra em minha casa pessoas são curadas", completed: false },
+      { id: "l6", title: "Quando Jesus entra em minha casa limitações são vencidas", completed: false },
+      { id: "l7", title: "Quando Jesus entra em minha casa pessoas são salvas", completed: false },
+      { id: "l8", title: "Meu coração a principal casa a ser conquistada", completed: false },
     ],
   },
   {
@@ -45,14 +45,14 @@ const initialPeaceChildrenProgress: PeaceChildProgress[] = [
     name: "João e Maria (Visitantes)",
     cellGroupName: "Leões de Judá",
     lessons: [
-      { id: "l1", title: "Lição 1: O Amor de Deus", completed: true },
-      { id: "l2", title: "Lição 2: O Pecado e suas Consequências", completed: true },
-      { id: "l3", title: "Lição 3: Jesus, a Única Solução", completed: true },
-      { id: "l4", title: "Lição 4: Fé e Arrependimento", completed: true },
-      { id: "l5", title: "Lição 5: O Novo Nascimento", completed: true },
-      { id: "l6", title: "Lição 6: O Batismo nas Águas", completed: false },
-      { id: "l7", title: "Lição 7: Vida no Espírito", completed: false },
-      { id: "l8", title: "Lição 8: A Igreja, Corpo de Cristo", completed: false },
+      { id: "l1", title: "Quando Jesus entra em minha casa a verdadeira paz é estabelecida", completed: true },
+      { id: "l2", title: "Quando Jesus entra em minha casa decisões corretas são tomadas", completed: true },
+      { id: "l3", title: "Quando Jesus entra em minha casa o perdão é liberado", completed: true },
+      { id: "l4", title: "Quando Jesus entra em minha casa ressurreições acontecem", completed: true },
+      { id: "l5", title: "Quando Jesus entra em minha casa pessoas são curadas", completed: true },
+      { id: "l6", title: "Quando Jesus entra em minha casa limitações são vencidas", completed: false },
+      { id: "l7", title: "Quando Jesus entra em minha casa pessoas são salvas", completed: false },
+      { id: "l8", title: "Meu coração a principal casa a ser conquistada", completed: false },
     ],
   },
 ];
