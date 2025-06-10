@@ -18,7 +18,7 @@ import { SidebarNavItems } from './SidebarNavItems';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { usePathname, useRouter } from 'next/navigation'; // Importado useRouter
+import { usePathname, useRouter } from 'next/navigation';
 import { mainNav, userNav } from '@/config/nav';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,8 +30,8 @@ interface AppShellLayoutProps {
 
 function AppShellInner({ children }: AppShellLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter(); // Adicionado router
-  const { user, loginAs, logout } = useAuth();
+  const router = useRouter();
+  const { user, simulateLoginByRole, logout } = useAuth(); // Corrigido para usar simulateLoginByRole
 
   const currentPage = mainNav.find(item => {
     if (item.exact) return item.href === pathname;
@@ -41,7 +41,7 @@ function AppShellInner({ children }: AppShellLayoutProps) {
   const handleUserNavClick = (href: string) => {
     if (href === '#') { // Handle logout
       logout();
-      router.push('/login'); // Redirecionamento explícito para /login
+      router.push('/login');
     }
     // Se não for logout, a navegação normal via Link (asChild) cuidará disso.
   };
@@ -68,7 +68,7 @@ function AppShellInner({ children }: AppShellLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center p-2 h-auto">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://placehold.co/40x40.png" alt="User Avatar" data-ai-hint="user avatar" />
+                    <AvatarImage src="https://placehold.co/40x40.png" alt="User Avatar" data-ai-hint="user avatar"/>
                     <AvatarFallback>{user.name?.substring(0,2).toUpperCase() || 'VV'}</AvatarFallback>
                   </Avatar>
                   <div className="ml-2 text-left group-data-[collapsible=icon]:hidden">
@@ -87,16 +87,14 @@ function AppShellInner({ children }: AppShellLayoutProps) {
                     return null;
                   }
                   return (
-                    <DropdownMenuItem key={item.label} asChild={item.href !== '#'} onClick={() => handleUserNavClick(item.href)}>
+                    <DropdownMenuItem key={item.label} asChild={false} onClick={() => handleUserNavClick(item.href)}>
                       {item.href === '#' ? (
-                        // Usar um elemento button real para logout para que o onClick seja acionado corretamente
-                        // O Link não é necessário aqui e pode interferir com o onClick.
                         <button className="w-full text-left flex items-center relative">
                           <IconComponent className="mr-2 h-4 w-4" />
                           <span>{item.label}</span>
                         </button>
                       ) : (
-                        <Link href={item.href} className="flex items-center">
+                        <Link href={item.href} className="flex items-center w-full">
                           <IconComponent className="mr-2 h-4 w-4" />
                           <span>{item.label}</span>
                         </Link>
@@ -122,8 +120,8 @@ function AppShellInner({ children }: AppShellLayoutProps) {
           {/* Mock User Switcher for Demo */}
           <div className="flex gap-2 items-center">
             <span className="text-xs text-muted-foreground">Demo:</span>
-            <Button size="sm" variant={user?.role === 'missionario' ? 'default' : 'outline'} onClick={() => loginAs('missionario')}>Missionário</Button>
-            <Button size="sm" variant={user?.role === 'lider_de_celula' ? 'default' : 'outline'} onClick={() => loginAs('lider_de_celula')}>Líder Célula</Button>
+            <Button size="sm" variant={user?.role === 'missionario' ? 'default' : 'outline'} onClick={() => simulateLoginByRole('missionario')}>Missionário</Button>
+            <Button size="sm" variant={user?.role === 'lider_de_celula' ? 'default' : 'outline'} onClick={() => simulateLoginByRole('lider_de_celula')}>Líder Célula</Button>
           </div>
         </header>
         <main className="flex-1 p-6 bg-background">
