@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog } from "lucide-react";
+import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal } from "lucide-react"; // Adicionado SlidersHorizontal
 
 // Mock para descrever as permissões dos papéis
 const rolePermissionsData = {
@@ -145,13 +145,31 @@ export default function SettingsPage() {
                 ))}
               </Accordion>
               {user.role === 'missionario' && (
-                <div className="mt-6 p-6 border border-dashed rounded-lg">
-                    <h3 className="font-headline text-lg mb-2">Gerenciamento Avançado de Permissões</h3>
-                    <p className="text-sm text-muted-foreground font-body mb-3">
-                        No futuro, missionários poderão ter controles mais granulares para ajustar permissões específicas de usuários ou criar papéis customizados.
+                <Card className="mt-8 shadow-md">
+                  <CardHeader>
+                    <CardTitle className="font-headline text-lg flex items-center gap-2">
+                      <SlidersHorizontal className="h-5 w-5 text-primary" />
+                      Gerenciamento Avançado de Permissões
+                    </CardTitle>
+                    <CardDescription className="font-body">
+                        Ajuste fino de permissões e criação de papéis customizados.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground font-body mb-4">
+                        Esta seção permitirá, no futuro, que administradores (Missionários) tenham controle granular sobre as permissões de usuários individuais ou criem novos papéis com conjuntos de acesso específicos.
+                        Isso oferece flexibilidade máxima para adaptar o sistema às necessidades da igreja.
                     </p>
-                    <Button variant="outline" disabled>Configurações Avançadas (Em breve)</Button>
-                </div>
+                    <div className="p-6 border border-dashed rounded-lg bg-background/50 text-center">
+                        <p className="text-muted-foreground font-body mb-3">
+                            Funcionalidade de edição avançada de permissões está em desenvolvimento.
+                        </p>
+                        <Button variant="outline" disabled>
+                            Configurar Permissões Detalhadas (Em breve)
+                        </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </CardContent>
           </Card>
