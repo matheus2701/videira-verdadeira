@@ -2,7 +2,7 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 
 type Theme = "light" | "dark" | "system";
 
@@ -23,54 +23,79 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  storageKey = "vite-ui-theme", // Mantendo o nome genérico por hábito, mas funciona
+  storageKey = "videira-theme", // Default storageKey used if not provided
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
+      try {
+        const storedTheme = localStorage.getItem(storageKey) as Theme | null;
+        if (storedTheme && ["light", "dark", "system"].includes(storedTheme)) {
+          return storedTheme;
+        }
+      } catch (e) {
+        // Ignore localStorage errors (e.g., in private browsing)
+        console.error("Failed to read theme from localStorage", e);
+      }
     }
     return defaultTheme;
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() => {
+    // This initial state for resolvedTheme is a best-guess for SSR and initial client render.
+    // It will be correctly set by the useEffect hook once the client mounts.
+    if (defaultTheme === "dark") return "dark";
+    return "light"; // Default to light if system or light, as system preference isn't known SSR.
+  });
 
   useEffect(() => {
+    // This effect runs on the client after mount.
     const root = window.document.documentElement;
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    const currentTheme = theme === "system" ? systemTheme : theme;
-
-    root.classList.remove("light", "dark");
-    root.classList.add(currentTheme);
-    setResolvedTheme(currentTheme);
-
-    if (typeof window !== 'undefined') {
-        localStorage.setItem(storageKey, theme);
-    }
-  }, [theme, storageKey]);
-
-  // Listen for system theme changes if 'system' is selected
-  useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      if (theme === "system") {
-        const newSystemTheme = mediaQuery.matches ? "dark" : "light";
-        const root = window.document.documentElement;
-        root.classList.remove("light", "dark");
-        root.classList.add(newSystemTheme);
-        setResolvedTheme(newSystemTheme);
+    
+    const applyTheme = (currentThemeSetting: Theme) => {
+      let themeToApply: "light" | "dark";
+      if (currentThemeSetting === "system") {
+        themeToApply = mediaQuery.matches ? "dark" : "light";
+      } else {
+        themeToApply = currentThemeSetting;
+      }
+
+      root.classList.remove("light", "dark");
+      root.classList.add(themeToApply);
+      setResolvedTheme(themeToApply);
+
+      try {
+        localStorage.setItem(storageKey, currentThemeSetting);
+      } catch (e) {
+        console.error("Failed to save theme to localStorage", e);
+      }
+    };
+
+    applyTheme(theme); // Apply initial theme
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (theme === "system") { // Only react to system changes if theme is "system"
+        applyTheme("system");
       }
     };
 
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
-  }, [theme]);
+  }, [theme, storageKey]);
 
-  const setTheme = useCallback((newTheme: Theme) => {
+
+  const handleSetTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
   }, []);
 
+  const contextValue = useMemo(() => ({
+    theme,
+    setTheme: handleSetTheme,
+    resolvedTheme,
+  }), [theme, handleSetTheme, resolvedTheme]);
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );
