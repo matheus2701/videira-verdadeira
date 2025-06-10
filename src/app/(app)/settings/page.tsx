@@ -1,7 +1,10 @@
 
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +15,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal, Settings as SettingsIcon, Package, Users, HandCoins, Home, BookOpen, BarChartBig, Edit } from "lucide-react";
+import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal, Settings as SettingsIcon, Package, Users, HandCoins, Home, BookOpen, BarChartBig, Edit, Save } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from "@/components/ui/form";
 
-// Mock para descrever as permissões dos papéis
+
 const rolePermissionsData = {
   missionario: {
     label: "Missionário (Administrador)",
@@ -43,8 +47,7 @@ const rolePermissionsData = {
       { feature: "Gerenciamento de Vidas da Célula", description: "Adicionar e editar informações das vidas vinculadas à sua célula." },
       { feature: "Registro de Ofertas da Célula", description: "Registrar ofertas específicas da sua célula." },
       { feature: "Acompanhamento de Lições (Casas de Paz da Célula)", description: "Registrar o progresso das lições nas casas de paz sob sua responsabilidade." },
-      { feature: "Configurações de Perfil", description: "Visualizar informações do seu perfil." },
-      // O acesso a Relatórios é controlado dinamicamente pela nova permissão
+      { feature: "Configurações de Perfil", description: "Visualizar informações do seu perfil e editar alguns dados." },
     ],
   },
 };
@@ -55,7 +58,7 @@ type RoleKey = keyof typeof rolePermissionsData;
 interface PermissionAction {
   action: string;
   missionario: boolean;
-  lider_de_celula: boolean | 'dynamic_reports'; // 'dynamic_reports' para lógica especial
+  lider_de_celula: boolean | 'dynamic_reports'; 
 }
 
 interface PermissionModule {
@@ -64,11 +67,37 @@ interface PermissionModule {
   permissions: PermissionAction[];
 }
 
+const editProfileSchema = z.object({
+  name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres." }),
+  email: z.string().email({ message: "Formato de e-mail inválido." }),
+});
+
+type EditProfileFormValues = z.infer<typeof editProfileSchema>;
+
 
 export default function SettingsPage() {
-  const { user, appPermissions, toggleLiderPodeVerRelatorios } = useAuth();
+  const { user, appPermissions, toggleLiderPodeVerRelatorios, updateMockUser, setUser: setAuthUser } = useAuth();
   const { toast } = useToast();
   const [isDetailedPermissionsDialogOpen, setIsDetailedPermissionsDialogOpen] = useState(false);
+  const [isEditProfileDialogOpen, setIsEditProfileDialogOpen] = useState(false);
+
+  const editProfileForm = useForm<EditProfileFormValues>({
+    resolver: zodResolver(editProfileSchema),
+    defaultValues: {
+      name: user?.name || "",
+      email: user?.email || "",
+    },
+  });
+
+  useEffect(() => {
+    if (user) {
+      editProfileForm.reset({
+        name: user.name,
+        email: user.email,
+      });
+    }
+  }, [user, editProfileForm, isEditProfileDialogOpen]);
+
 
   if (!user) {
     return (
@@ -123,7 +152,7 @@ export default function SettingsPage() {
     },
     {
       moduleName: "Equipes de Encontro",
-      icon: Users, // Placeholder, pode ser UsersRound
+      icon: UsersRound,
       permissions: [
         { action: "Criar e Gerenciar Equipes de Encontro", missionario: true, lider_de_celula: false },
         { action: "Adicionar Membros a Equipes", missionario: true, lider_de_celula: false },
@@ -142,7 +171,7 @@ export default function SettingsPage() {
       moduleName: "Casas de Paz",
       icon: Home,
       permissions: [
-        { action: "Agendar e Gerenciar Todas as Casas de Paz", missionario: true, lider_de_celula: true }, // Líder pode agendar
+        { action: "Agendar e Gerenciar Todas as Casas de Paz", missionario: true, lider_de_celula: true },
         { action: "Visualizar Todas as Casas de Paz", missionario: true, lider_de_celula: true },
       ],
     },
@@ -162,6 +191,23 @@ export default function SettingsPage() {
       ],
     },
   ];
+
+  function onSubmitEditProfile(values: EditProfileFormValues) {
+    if (!user) return;
+
+    const updatedUser = {
+      ...user,
+      name: values.name,
+      email: values.email,
+    };
+    updateMockUser(updatedUser); // Esta função também deve atualizar o 'user' logado através do setAuthUser dentro dela
+    
+    toast({
+      title: "Perfil Atualizado!",
+      description: "Seu nome e e-mail foram atualizados com sucesso.",
+    });
+    setIsEditProfileDialogOpen(false);
+  }
 
 
   return (
@@ -209,7 +255,59 @@ export default function SettingsPage() {
                 </div>
               )}
                <div className="pt-4">
-                 <Button variant="outline" disabled>Editar Perfil (Em breve)</Button>
+                 <Dialog open={isEditProfileDialogOpen} onOpenChange={setIsEditProfileDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline">
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar Perfil
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="font-headline">Editar Perfil</DialogTitle>
+                            <DialogDescription className="font-body">
+                                Atualize seu nome e e-mail.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Form {...editProfileForm}>
+                            <form onSubmit={editProfileForm.handleSubmit(onSubmitEditProfile)} className="space-y-4 py-4">
+                                <FormField
+                                    control={editProfileForm.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <RHFFormLabel>Nome</RHFFormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Seu nome completo" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={editProfileForm.control}
+                                    name="email"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <RHFFormLabel>E-mail</RHFFormLabel>
+                                            <FormControl>
+                                                <Input type="email" placeholder="seu@email.com" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <DialogFooter className="pt-4">
+                                    <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
+                                    <Button type="submit">
+                                        <Save className="mr-2 h-4 w-4" />
+                                        Salvar Alterações
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                 </Dialog>
                </div>
             </CardContent>
           </Card>
@@ -396,3 +494,5 @@ export default function SettingsPage() {
 }
 
     
+
+      
