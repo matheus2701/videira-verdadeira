@@ -15,10 +15,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal, Settings as SettingsIcon, Package, Users, HandCoins, Home, BookOpen, BarChartBig, Edit, Save, UsersRound } from "lucide-react";
+import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal, Settings as SettingsIcon, Package, Users, HandCoins, Home, BookOpen, BarChartBig, Edit, Save, UsersRound, Moon, Sun, Laptop } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from "@/components/ui/form";
+import { useTheme } from "@/contexts/ThemeContext"; // Importado
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Importado
 
 
 const rolePermissionsData = {
@@ -77,9 +79,13 @@ type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
 export default function SettingsPage() {
   const { user, appPermissions, toggleLiderPodeVerRelatorios, updateMockUser } = useAuth();
+  const { theme, setTheme, resolvedTheme } = useTheme(); // Hook de tema
   const { toast } = useToast();
   const [isDetailedPermissionsDialogOpen, setIsDetailedPermissionsDialogOpen] = useState(false);
   const [isEditProfileDialogOpen, setIsEditProfileDialogOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []); // Para evitar hydration mismatch com tema
 
   const editProfileForm = useForm<EditProfileFormValues>({
     resolver: zodResolver(editProfileSchema),
@@ -99,12 +105,12 @@ export default function SettingsPage() {
   }, [user, editProfileForm, isEditProfileDialogOpen]);
 
 
-  if (!user) {
+  if (!user || !mounted) { // Adicionado !mounted para aguardar hidratação
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <ShieldAlert className="w-16 h-16 text-destructive mb-4" />
         <h2 className="text-2xl font-semibold mb-2">Acesso Negado</h2>
-        <p className="text-muted-foreground">Você precisa estar logado para acessar as configurações.</p>
+        <p className="text-muted-foreground">Você precisa estar logado para acessar as configurações ou o tema está carregando.</p>
       </div>
     );
   }
@@ -218,12 +224,15 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 md:w-auto"> {/* Ajuste para 3 colunas em telas médias */}
           <TabsTrigger value="profile">
             <UserCircle className="mr-2 h-4 w-4" /> Meu Perfil
           </TabsTrigger>
           <TabsTrigger value="permissions">
             <Lock className="mr-2 h-4 w-4" /> Gerenciar Permissões
+          </TabsTrigger>
+          <TabsTrigger value="system_prefs"> {/* Nova Aba */}
+            <SlidersHorizontal className="mr-2 h-4 w-4" /> Preferências
           </TabsTrigger>
         </TabsList>
 
@@ -474,22 +483,60 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
 
-       <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="font-headline">Preferências do Sistema (Placeholder)</CardTitle>
-          <CardDescription className="font-body">
-            Configurações de tema, notificações, etc.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-            Opções de preferências gerais do sistema.
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="system_prefs" className="mt-6"> {/* Conteúdo da Nova Aba */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-xl">Preferências do Sistema</CardTitle>
+              <CardDescription className="font-body">
+                Personalize a aparência e outras configurações gerais do sistema.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label className="text-base font-medium">Tema da Interface</Label>
+                <RadioGroup
+                  value={theme}
+                  onValueChange={(value) => setTheme(value as Theme)}
+                  className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4"
+                >
+                  <Label
+                    htmlFor="theme-light"
+                    className={`flex flex-col items-center justify-center rounded-md border-2 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer
+                                ${resolvedTheme === 'light' && theme === 'light' ? 'border-primary ring-2 ring-primary' : 'border-muted'}`}
+                  >
+                    <Sun className="h-6 w-6 mb-2" />
+                    Claro
+                    <RadioGroupItem value="light" id="theme-light" className="sr-only" />
+                  </Label>
+                  <Label
+                    htmlFor="theme-dark"
+                    className={`flex flex-col items-center justify-center rounded-md border-2 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer
+                                ${resolvedTheme === 'dark' && theme === 'dark' ? 'border-primary ring-2 ring-primary' : 'border-muted'}`}
+                  >
+                    <Moon className="h-6 w-6 mb-2" />
+                    Escuro
+                    <RadioGroupItem value="dark" id="theme-dark" className="sr-only" />
+                  </Label>
+                   <Label
+                    htmlFor="theme-system"
+                    className={`flex flex-col items-center justify-center rounded-md border-2 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer
+                                ${theme === 'system' ? 'border-primary ring-2 ring-primary' : 'border-muted'}`}
+                  >
+                    <Laptop className="h-6 w-6 mb-2" />
+                    Sistema
+                    <RadioGroupItem value="system" id="theme-system" className="sr-only" />
+                  </Label>
+                </RadioGroup>
+              </div>
+               {/* Outras preferências podem ser adicionadas aqui no futuro */}
+               <div className="p-6 border border-dashed rounded-lg text-muted-foreground mt-6">
+                Mais opções de preferências serão adicionadas aqui no futuro, como configurações de notificação, idioma, etc.
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
-    
