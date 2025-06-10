@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal, Settings as SettingsIcon, Package, Users, HandCoins, Home, BookOpen, BarChartBig, Edit, Save } from "lucide-react";
+import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal, Settings as SettingsIcon, Package, Users, HandCoins, Home, BookOpen, BarChartBig, Edit, Save, UsersRound } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from "@/components/ui/form";
@@ -76,7 +76,7 @@ type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
 
 export default function SettingsPage() {
-  const { user, appPermissions, toggleLiderPodeVerRelatorios, updateMockUser, setUser: setAuthUser } = useAuth();
+  const { user, appPermissions, toggleLiderPodeVerRelatorios, updateMockUser } = useAuth();
   const { toast } = useToast();
   const [isDetailedPermissionsDialogOpen, setIsDetailedPermissionsDialogOpen] = useState(false);
   const [isEditProfileDialogOpen, setIsEditProfileDialogOpen] = useState(false);
@@ -200,7 +200,7 @@ export default function SettingsPage() {
       name: values.name,
       email: values.email,
     };
-    updateMockUser(updatedUser); // Esta função também deve atualizar o 'user' logado através do setAuthUser dentro dela
+    updateMockUser(updatedUser); 
     
     toast({
       title: "Perfil Atualizado!",
@@ -492,7 +492,4 @@ export default function SettingsPage() {
     </div>
   );
 }
-
     
-
-      
