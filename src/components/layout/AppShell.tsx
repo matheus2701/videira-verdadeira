@@ -23,6 +23,7 @@ import { mainNav, userNav } from '@/config/nav';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
 import type { Role } from '@/types';
+import { useEffect, useState } from 'react'; // Importado useEffect e useState
 
 interface AppShellLayoutProps {
   children: ReactNode;
@@ -31,7 +32,13 @@ interface AppShellLayoutProps {
 function AppShellInner({ children }: AppShellLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, simulateLoginByRole, logout } = useAuth();
+  const { user, logout } = useAuth(); // Removido simulateLoginByRole
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
 
   const currentPage = mainNav.find(item => {
     if (item.exact) return item.href === pathname;
@@ -39,11 +46,10 @@ function AppShellInner({ children }: AppShellLayoutProps) {
   });
 
   const handleUserNavClick = (href: string) => {
-    if (href === '#') { // Handle logout
+    if (href === '#') { 
       logout();
-      router.push('/login'); // Redireciona para a página de login
+      router.push('/login'); 
     }
-    // Se não for logout, a navegação normal via Link (asChild) cuidará disso.
   };
   
   return (
@@ -113,16 +119,11 @@ function AppShellInner({ children }: AppShellLayoutProps) {
             <SidebarTrigger className="md:hidden" />
             <div>
               <h1 className="font-headline text-base sm:text-lg font-semibold text-foreground">
-                {currentPage?.label || "Videira Verdadeira"}
+                 {mounted ? (currentPage?.label || "Videira Verdadeira") : "Videira Verdadeira"}
               </h1>
             </div>
           </div>
-          {/* Mock User Switcher for Demo */}
-          <div className="flex gap-2 items-center">
-            <span className="text-xs text-muted-foreground">Demo:</span>
-            <Button size="sm" variant={user?.role === 'missionario' ? 'default' : 'outline'} onClick={() => simulateLoginByRole('missionario')}>Missionário</Button>
-            <Button size="sm" variant={user?.role === 'lider_de_celula' ? 'default' : 'outline'} onClick={() => simulateLoginByRole('lider_de_celula')}>Líder Célula</Button>
-          </div>
+          {/* Os botões de simulação de login foram removidos daqui */}
         </header>
         <main className="flex-1 p-6 bg-background">
           {children}
@@ -132,11 +133,9 @@ function AppShellInner({ children }: AppShellLayoutProps) {
   );
 }
 
-// Wrap the AppShellInner with AuthProvider
+// Wrap the AppShellInner with AuthProvider - AuthProvider foi movido para RootLayout
 export function AppShell({ children }: AppShellLayoutProps) {
   return (
-    <AuthProvider>
       <AppShellInner>{children}</AppShellInner>
-    </AuthProvider>
   )
 }
