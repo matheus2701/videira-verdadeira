@@ -378,23 +378,6 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
 
-      {user.role === 'missionario' && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="font-headline">Gerenciamento de Usuários (Placeholder)</CardTitle>
-            <CardDescription className="font-body">
-              Adicionar, editar ou remover usuários e suas permissões.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="p-8 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-              Interface de gerenciamento de usuários (Acesso de Missionário).
-            </div>
-            <Button className="mt-4" disabled>Adicionar Usuário (Em breve)</Button>
-          </CardContent>
-        </Card>
-      )}
-
        <Card className="mt-6">
         <CardHeader>
           <CardTitle className="font-headline">Preferências do Sistema (Placeholder)</CardTitle>
@@ -411,3 +394,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
