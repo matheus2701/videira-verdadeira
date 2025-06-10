@@ -115,12 +115,13 @@ export default function NovoLiderPage() {
     updateMockVida(vidaAtualizada);
     
     // 2. Atualizar a Célula com o novo líder
+    const oldLiderVidaId = celulaSelecionada.liderVidaId; // Captura o ID do líder antigo da célula
     const celulaAtualizada: CellGroup = {
       ...celulaSelecionada,
       liderVidaId: vidaSelecionada.id,
       liderNome: vidaSelecionada.nomeCompleto,
     };
-    updateMockCellGroup(celulaAtualizada);
+    updateMockCellGroup(celulaAtualizada, oldLiderVidaId); // Passa o ID do líder antigo, se houver
     
     // 3. Criar/atualizar o User no AuthContext
     let userParaAuth = mockUsers.find(u => u.vidaId === vidaSelecionada.id);
@@ -311,5 +312,3 @@ export default function NovoLiderPage() {
   );
 }
 
-
-    

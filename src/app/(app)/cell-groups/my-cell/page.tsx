@@ -141,19 +141,11 @@ export default function MyCellPage() {
 
     updateMockCellGroup(updatedCell); 
 
-    // Se o nome da célula mudou e o usuário logado é o líder desta célula, atualize o user no AuthContext
-    if (user.cellGroupId === updatedCell.id && user.cellGroupName !== updatedCell.name) {
-        setUser({ ...user, cellGroupName: updatedCell.name });
-    }
-    // Se o líder não tinha cellGroupId (primeira edição de uma "nova" célula), atualize o user no AuthContext
+    // Se o líder não tinha cellGroupId (primeira edição de uma "nova" célula, com temp-id),
+    // atualize o user no AuthContext para refletir o cellGroupId (mesmo que seja o temp-id por enquanto)
+    // e o novo nome da célula. A função updateMockCellGroup no AuthContext já trata de atualizar o user
+    // se o user.cellGroupId já existir e o nome da célula mudar.
     if (!user.cellGroupId && cellIdToUpdate.startsWith('temp-id-') && user.role === 'lider_de_celula') {
-        // Idealmente, `updateMockCellGroup` poderia retornar o ID real da célula se fosse um novo cadastro.
-        // Para o mock, se `addMockCellGroup` for usado para "novas" células de líder, isso seria mais limpo.
-        // Por ora, se o ID é temporário, após salvar, o líder ainda não teria o ID da célula no seu objeto User.
-        // Isso seria melhor tratado se `updateMockCellGroup` pudesse adicionar uma célula se `temp-id` for detectado.
-        // Para esta refatoração, vamos assumir que updateMockCellGroup atualiza o User se ele já tem a célula.
-        // Se era uma nova célula, o user precisa ter seu cellGroupId e cellGroupName atualizados.
-        // Esta lógica pode ser melhorada no AuthContext.
          setUser({ ...user, cellGroupId: updatedCell.id, cellGroupName: updatedCell.name });
     }
 
