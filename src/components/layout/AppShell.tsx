@@ -31,7 +31,7 @@ interface AppShellLayoutProps {
 function AppShellInner({ children }: AppShellLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, simulateLoginByRole, logout } = useAuth(); // Corrigido para usar simulateLoginByRole
+  const { user, simulateLoginByRole, logout } = useAuth();
 
   const currentPage = mainNav.find(item => {
     if (item.exact) return item.href === pathname;
@@ -41,7 +41,7 @@ function AppShellInner({ children }: AppShellLayoutProps) {
   const handleUserNavClick = (href: string) => {
     if (href === '#') { // Handle logout
       logout();
-      router.push('/login');
+      router.push('/'); // Redireciona para a página inicial (landing page)
     }
     // Se não for logout, a navegação normal via Link (asChild) cuidará disso.
   };
@@ -87,12 +87,12 @@ function AppShellInner({ children }: AppShellLayoutProps) {
                     return null;
                   }
                   return (
-                    <DropdownMenuItem key={item.label} asChild={false} onClick={() => handleUserNavClick(item.href)}>
+                    <DropdownMenuItem key={item.label} asChild={false} onClick={() => handleUserNavClick(item.href)} className="cursor-pointer">
                       {item.href === '#' ? (
-                        <button className="w-full text-left flex items-center relative">
+                        <div className="w-full text-left flex items-center relative">
                           <IconComponent className="mr-2 h-4 w-4" />
                           <span>{item.label}</span>
-                        </button>
+                        </div>
                       ) : (
                         <Link href={item.href} className="flex items-center w-full">
                           <IconComponent className="mr-2 h-4 w-4" />
