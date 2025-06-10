@@ -2,25 +2,25 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { createContext, useState, useMemo, useCallback } from 'react';
+import { createContext, useState, useMemo, useCallback, useEffect } from 'react'; // Adicionado useEffect
 import type { User, Role, Vida, CellGroup, StoredOffering, OfferingFormValues, VidaStatus, PeaceHouse, PeaceHouseFormValues, Lesson } from '@/types';
-import { getDefaultLessons } from '@/types'; // Importar utilitário de lições
+import { getDefaultLessons } from '@/types';
 
-// Nova interface para permissões globais da aplicação (mock)
 interface AppPermissions {
   liderPodeVerRelatorios: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  setUser: (user: User | null) => void;
-  loginAs: (role: Role) => void;
+  setUser: (user: User | null) => void; // Kept for direct manipulation if needed elsewhere, though login/logout are preferred
+  loginWithEmail: (email: string, password?: string) => Promise<boolean>; // Password optional for mock
   logout: () => void;
+  simulateLoginByRole: (role: Role) => void; // Renamed from loginAs for clarity
   mockUsers: User[];
   mockVidas: Vida[];
   mockCellGroups: CellGroup[];
   mockOfferings: StoredOffering[];
-  mockPeaceHouses: PeaceHouse[]; // Adicionado
+  mockPeaceHouses: PeaceHouse[];
   updateMockVida: (updatedVida: Vida) => void;
   addMockVida: (newVida: Vida) => void;
   updateMockCellGroup: (updatedCG: CellGroup, oldLiderVidaId?: string) => void;
@@ -28,8 +28,8 @@ interface AuthContextType {
   addMockUser: (newUser: User) => void;
   updateMockUser: (updatedUser: User) => void;
   addMockOffering: (newOffering: OfferingFormValues) => void;
-  addMockPeaceHouse: (newPeaceHouseData: PeaceHouseFormValues) => void; // Adicionado
-  updateMockPeaceHouse: (updatedPeaceHouse: PeaceHouse) => void; // Adicionado
+  addMockPeaceHouse: (newPeaceHouseData: PeaceHouseFormValues) => void;
+  updateMockPeaceHouse: (updatedPeaceHouse: PeaceHouse) => void;
   toggleUserActiveStatus: (userId: string) => void;
   appPermissions: AppPermissions;
   toggleLiderPodeVerRelatorios: () => void;
@@ -37,7 +37,6 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock data inicial para Vidas
 const initialMockVidas: Vida[] = [
   { id: 'vida-lider-joao', nomeCompleto: 'Líder João', dataNascimento: new Date(1988, 2, 10), telefone: '(11) 91234-5678', idCelula: 'celula-discipulos-001', nomeCelula: 'Discípulos de Cristo', geracaoCelula: 'G1', status: 'lider_ativo', createdAt: new Date() },
   { id: 'vida-ana', nomeCompleto: 'Ana Silva (Membro)', dataNascimento: new Date(1990, 5, 15), idCelula: 'celula-discipulos-001', nomeCelula: 'Discípulos de Cristo', geracaoCelula: 'G1', status: 'membro', createdAt: new Date() },
@@ -48,49 +47,16 @@ const initialMockVidas: Vida[] = [
   { id: 'vida-lucia', nomeCompleto: 'Lúcia Ferreira (Treinamento)', dataNascimento: new Date(1980, 1, 1), telefone: '(31) 91111-2222', idCelula: 'celula-nova-geracao-003', nomeCelula: 'Nova Geração', geracaoCelula: 'G3', status: 'lider_em_treinamento', createdAt: new Date() },
 ];
 
-// Mock initial Cell Groups
 const initialMockCellGroups: CellGroup[] = [
-    {
-      id: 'celula-discipulos-001',
-      name: 'Discípulos de Cristo',
-      address: 'Rua da Fé, 123',
-      meetingDay: 'Quarta-feira',
-      meetingTime: '19:30',
-      geracao: 'G1',
-      liderVidaId: 'vida-lider-joao',
-      liderNome: 'Líder João',
-      meetingStatus: 'aconteceu',
-      lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 2))
-    },
-    {
-      id: 'celula-leoes-002',
-      name: 'Leões de Judá',
-      address: 'Av. Esperança, 456',
-      meetingDay: 'Quinta-feira',
-      meetingTime: '20:00',
-      geracao: 'G2',
-      meetingStatus: 'agendada',
-      lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 7))
-    },
-     {
-      id: 'celula-nova-geracao-003',
-      name: 'Nova Geração',
-      address: 'Praça da Alegria, 789',
-      meetingDay: 'Terça-feira',
-      meetingTime: '18:00',
-      geracao: 'G3',
-      liderVidaId: 'vida-lucia',
-      liderNome: 'Lúcia Ferreira',
-      meetingStatus: 'agendada',
-      lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 1))
-    },
+    { id: 'celula-discipulos-001', name: 'Discípulos de Cristo', address: 'Rua da Fé, 123', meetingDay: 'Quarta-feira', meetingTime: '19:30', geracao: 'G1', liderVidaId: 'vida-lider-joao', liderNome: 'Líder João', meetingStatus: 'aconteceu', lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 2)) },
+    { id: 'celula-leoes-002', name: 'Leões de Judá', address: 'Av. Esperança, 456', meetingDay: 'Quinta-feira', meetingTime: '20:00', geracao: 'G2', meetingStatus: 'agendada', lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 7)) },
+    { id: 'celula-nova-geracao-003', name: 'Nova Geração', address: 'Praça da Alegria, 789', meetingDay: 'Terça-feira', meetingTime: '18:00', geracao: 'G3', liderVidaId: 'vida-lucia', liderNome: 'Lúcia Ferreira', meetingStatus: 'agendada', lastStatusUpdate: new Date(new Date().setDate(new Date().getDate() - 1)) },
 ];
 
-// Mock data para usuários
-const mockMissionario: User = {
+const mockMissionarioUser: User = {
   id: 'user-missionario-01',
   name: 'Admin Missionário',
-  email: 'missionario@videira.app',
+  email: 'matheus.santos01@gmail.com', // Email atualizado
   role: 'missionario',
   isActive: true,
 };
@@ -103,7 +69,7 @@ const mockLiderUserInitial: User = {
   vidaId: 'vida-lider-joao',
   cellGroupId: 'celula-discipulos-001',
   cellGroupName: 'Discípulos de Cristo',
-  isActive: true,
+  isActive: true, // Garantir que isActive seja definido
 };
 const mockLiderLuciaUser: User = {
     id: 'user-lider-lucia-02',
@@ -116,9 +82,8 @@ const mockLiderLuciaUser: User = {
     isActive: true,
 }
 
-const initialMockUsers: User[] = [mockMissionario, mockLiderUserInitial, mockLiderLuciaUser];
+const initialMockUsers: User[] = [mockMissionarioUser, mockLiderUserInitial, mockLiderLuciaUser];
 
-// Mock data inicial para Ofertas
 const currentYear = new Date().getFullYear();
 const initialMockOfferings: StoredOffering[] = [
   { id: "off1", amount: 50, date: new Date(2024, 5, 5), cellGroupName: "Discípulos de Cristo", notes: "Oferta semanal" },
@@ -130,31 +95,93 @@ const initialMockOfferings: StoredOffering[] = [
   { id: "off7", amount: 120, date: new Date(currentYear, new Date().getMonth() -1, 15), cellGroupName: "Discípulos de Cristo", notes: "Oferta do mês passado" },
 ];
 
-// Mock data inicial para Casas de Paz (vazio por padrão, será populado via UI)
 const initialMockPeaceHouses: PeaceHouse[] = [];
 
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(mockMissionario);
+  const [user, setUserState] = useState<User | null>(null); // Inicializa como null
   const [vidasData, setVidasData] = useState<Vida[]>(initialMockVidas);
   const [cellGroupsData, setCellGroupsData] = useState<CellGroup[]>(initialMockCellGroups);
   const [usersData, setUsersData] = useState<User[]>(initialMockUsers);
   const [offeringsData, setOfferingsData] = useState<StoredOffering[]>(initialMockOfferings);
-  const [peaceHousesData, setPeaceHousesData] = useState<PeaceHouse[]>(initialMockPeaceHouses); // Estado para Casas de Paz
+  const [peaceHousesData, setPeaceHousesData] = useState<PeaceHouse[]>(initialMockPeaceHouses);
   const [appPermissions, setAppPermissions] = useState<AppPermissions>({ liderPodeVerRelatorios: false });
 
-  const loginAs = useCallback((role: Role) => {
-    if (role === 'missionario') {
-      setUser(mockMissionario);
-    } else {
-      const liderUser = usersData.find(u => u.role === 'lider_de_celula' && u.vidaId === 'vida-lider-joao') || mockLiderUserInitial;
-      setUser(liderUser);
+  // Carregar usuário do localStorage na inicialização
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('authUser');
+      if (storedUser) {
+        try {
+          setUserState(JSON.parse(storedUser));
+        } catch (error) {
+          console.error("Failed to parse authUser from localStorage", error);
+          localStorage.removeItem('authUser'); // Clear invalid entry
+        }
+      }
     }
-  }, [usersData]);
+  }, []);
+
+  const setUser = useCallback((newUser: User | null) => {
+    setUserState(newUser);
+    if (typeof window !== 'undefined') {
+      if (newUser) {
+        localStorage.setItem('authUser', JSON.stringify(newUser));
+      } else {
+        localStorage.removeItem('authUser');
+      }
+    }
+  }, []);
+
+
+  const loginWithEmail = useCallback(async (email: string, password?: string): Promise<boolean> => {
+    const foundUser = usersData.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+    if (foundUser) {
+      // Simulação de verificação de senha para o missionário específico
+      if (foundUser.email === 'matheus.santos01@gmail.com' && password !== 'videira1701') {
+        console.warn("Senha incorreta para o missionário.");
+        return false;
+      }
+      // Para outros usuários mockados, qualquer senha é aceita se o email existir (ou nenhuma senha é verificada)
+      if (!foundUser.isActive) {
+        console.warn(`Usuário ${foundUser.name} está inativo.`);
+        return false; // Não permite login de usuário inativo
+      }
+      setUser(foundUser);
+      return true;
+    }
+    console.warn("Usuário não encontrado:", email);
+    return false;
+  }, [usersData, setUser]);
+
+  const simulateLoginByRole = useCallback((role: Role) => {
+    let userToLogin: User | undefined;
+    if (role === 'missionario') {
+      userToLogin = usersData.find(u => u.email === 'matheus.santos01@gmail.com');
+    } else {
+      // Tenta encontrar o Líder João ou o primeiro líder de célula ativo
+      userToLogin = usersData.find(u => u.role === 'lider_de_celula' && u.vidaId === 'vida-lider-joao' && u.isActive);
+      if (!userToLogin) {
+        userToLogin = usersData.find(u => u.role === 'lider_de_celula' && u.isActive);
+      }
+    }
+    
+    if (userToLogin && userToLogin.isActive) {
+      setUser(userToLogin);
+    } else if (userToLogin && !userToLogin.isActive) {
+       console.warn(`Usuário ${userToLogin.name} (${role}) está inativo. Login não realizado.`);
+       setUser(null); // Garante que, se um usuário inativo for selecionado, o estado do usuário seja nulo
+    } else {
+      console.warn(`Nenhum usuário ativo encontrado para o papel: ${role}`);
+      setUser(null); // Garante que, se nenhum usuário for encontrado, o estado do usuário seja nulo
+    }
+  }, [usersData, setUser]);
 
   const logout = useCallback(() => {
     setUser(null);
-  }, []);
+    // localStorage é tratado pelo setUser
+  }, [setUser]);
 
   const updateMockVida = useCallback((updatedVida: Vida) => {
     setVidasData(prev => prev.map(v => v.id === updatedVida.id ? updatedVida : v));
@@ -198,14 +225,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (u.vidaId === updatedVida.id && u.role === 'lider_de_celula') {
              const updatedAuthUser = {...u, cellGroupId: undefined, cellGroupName: undefined};
              if (user && user.id === u.id) {
-                setUser(prevUser => prevUser ? {...prevUser, cellGroupId: undefined, cellGroupName: undefined } : null);
+                setUser(prevU => prevU ? {...prevU, cellGroupId: undefined, cellGroupName: undefined } : null);
              }
              return updatedAuthUser;
           }
           return u;
         }));
     }
-  }, [user]);
+  }, [user, setUser]);
 
   const addMockVida = useCallback((newVida: Vida) => {
     setVidasData(prev => [{...newVida, createdAt: newVida.createdAt || new Date()}, ...prev]);
@@ -228,37 +255,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return v;
       }));
       setUsersData(prevUsers => {
-        const existingUser = prevUsers.find(u => u.vidaId === updatedCG.liderVidaId);
-        if (existingUser) {
-          return prevUsers.map(u => {
-            if (u.vidaId === updatedCG.liderVidaId) {
-              const updatedAuthUser = {
-                ...u,
+        const existingUserIndex = prevUsers.findIndex(u => u.vidaId === updatedCG.liderVidaId);
+        if (existingUserIndex !== -1) {
+          const updatedUsers = [...prevUsers];
+          const updatedAuthUser = {
+                ...updatedUsers[existingUserIndex],
                 role: 'lider_de_celula' as Role,
                 cellGroupId: updatedCG.id,
                 cellGroupName: updatedCG.name,
-                name: updatedCG.liderNome || u.name,
-                isActive: u.isActive === undefined ? true : u.isActive,
+                name: updatedCG.liderNome || updatedUsers[existingUserIndex].name,
+                isActive: updatedUsers[existingUserIndex].isActive === undefined ? true : updatedUsers[existingUserIndex].isActive,
               };
-              if (user && user.id === u.id) {
-                setUser(updatedAuthUser);
-              }
-              return updatedAuthUser;
-            }
-            return u;
-          });
-        } else { // Se o User não existe para o novo líder, cria um
+          updatedUsers[existingUserIndex] = updatedAuthUser;
+          if (user && user.id === updatedAuthUser.id) {
+            setUser(updatedAuthUser);
+          }
+          return updatedUsers;
+        } else { 
           const newLiderUser: User = {
             id: `user-${updatedCG.liderVidaId}-${Date.now()}`,
             name: updatedCG.liderNome || 'Nome do Líder',
-            email: `${(updatedCG.liderNome || 'lider').toLowerCase().replace(/\s+/g, '.')}@videira.app`,
+            email: `${(updatedCG.liderNome || 'lider').toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '')}@videira.app`,
             role: 'lider_de_celula',
             vidaId: updatedCG.liderVidaId,
             cellGroupId: updatedCG.id,
             cellGroupName: updatedCG.name,
             isActive: true,
           };
-          // Se o usuário logado é este novo líder (improvável neste fluxo, mas para segurança)
           if (user && user.vidaId === newLiderUser.vidaId) {
              setUser(newLiderUser);
           }
@@ -285,13 +308,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return u;
         }));
     }
-
-  }, [user]);
+  }, [user, setUser]);
 
   const addMockCellGroup = useCallback((newCG: CellGroup) => {
-    setCellGroupsData(prev => [{...newCG, lastStatusUpdate: newCG.lastStatusUpdate || new Date()}, ...prev]);
+    const cellWithDefaults = {...newCG, lastStatusUpdate: newCG.lastStatusUpdate || new Date()};
+    setCellGroupsData(prev => [cellWithDefaults, ...prev]);
     if (newCG.liderVidaId) {
-        updateMockCellGroup(newCG);
+        updateMockCellGroup(cellWithDefaults); // Passar a célula com defaults
     }
   }, [updateMockCellGroup]);
 
@@ -308,7 +331,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return [{...newUser, isActive: newUser.isActive ?? true}, ...prev];
     });
-  }, [user]);
+  }, [user, setUser]);
 
   const updateMockUser = useCallback((updatedUser: User) => {
     setUsersData(prev => prev.map(u => {
@@ -321,7 +344,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return u;
     }));
-  }, [user]);
+  }, [user, setUser]);
 
   const addMockOffering = useCallback((newOfferingData: OfferingFormValues) => {
     const newOffering: StoredOffering = {
@@ -331,27 +354,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOfferingsData(prev => [newOffering, ...prev]);
   }, []);
 
-  const toggleUserActiveStatus = useCallback((userId: string) => {
+  const toggleUserActiveStatus = useCallback((userIdToToggle: string) => {
     setUsersData(prevUsers =>
       prevUsers.map(u => {
-        if (u.id === userId) {
-          const newActiveStatus = u.isActive === undefined ? false : !u.isActive;
-          const updatedUser = { ...u, isActive: newActiveStatus };
-          if (user && user.id === userId) {
-            setUser(updatedUser);
+        if (u.id === userIdToToggle) {
+          const newActiveStatus = u.isActive === undefined ? false : !u.isActive; // Default to false if undefined
+          const updatedUserRecord = { ...u, isActive: newActiveStatus };
+          if (user && user.id === userIdToToggle) { // Se o usuário alterado for o logado
+            setUser(updatedUserRecord); // Atualiza o estado do usuário logado
           }
-          return updatedUser;
+          return updatedUserRecord;
         }
         return u;
       })
     );
-  }, [user]);
+  }, [user, setUser]);
 
   const toggleLiderPodeVerRelatorios = useCallback(() => {
     setAppPermissions(prev => ({ ...prev, liderPodeVerRelatorios: !prev.liderPodeVerRelatorios }));
   }, []);
 
-  // Funções para Casas de Paz
   const addMockPeaceHouse = useCallback((newPeaceHouseData: PeaceHouseFormValues) => {
     const newPeaceHouse: PeaceHouse = {
       id: `ph-${Date.now()}`,
@@ -367,17 +389,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPeaceHousesData(prev => prev.map(ph => ph.id === updatedPeaceHouse.id ? updatedPeaceHouse : ph));
   }, []);
 
-
   const value = useMemo(() => ({
     user,
     setUser,
-    loginAs,
+    loginWithEmail,
     logout,
+    simulateLoginByRole,
     mockUsers: usersData,
     mockVidas: vidasData,
     mockCellGroups: cellGroupsData,
     mockOfferings: offeringsData,
-    mockPeaceHouses: peaceHousesData, // Expor
+    mockPeaceHouses: peaceHousesData,
     updateMockVida,
     addMockVida,
     updateMockCellGroup,
@@ -385,12 +407,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     addMockUser,
     updateMockUser,
     addMockOffering,
-    addMockPeaceHouse, // Expor
-    updateMockPeaceHouse, // Expor
+    addMockPeaceHouse,
+    updateMockPeaceHouse,
     toggleUserActiveStatus,
     appPermissions,
     toggleLiderPodeVerRelatorios,
-  }), [user, loginAs, logout, usersData, vidasData, cellGroupsData, offeringsData, peaceHousesData, updateMockVida, addMockVida, updateMockCellGroup, addMockCellGroup, addMockUser, updateMockUser, addMockOffering, addMockPeaceHouse, updateMockPeaceHouse, toggleUserActiveStatus, appPermissions, toggleLiderPodeVerRelatorios]);
+  }), [user, setUser, loginWithEmail, logout, simulateLoginByRole, usersData, vidasData, cellGroupsData, offeringsData, peaceHousesData, updateMockVida, addMockVida, updateMockCellGroup, addMockCellGroup, addMockUser, updateMockUser, addMockOffering, addMockPeaceHouse, updateMockPeaceHouse, toggleUserActiveStatus, appPermissions, toggleLiderPodeVerRelatorios]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -18,7 +18,7 @@ import { SidebarNavItems } from './SidebarNavItems';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Importado useRouter
 import { mainNav, userNav } from '@/config/nav';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +30,7 @@ interface AppShellLayoutProps {
 
 function AppShellInner({ children }: AppShellLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter(); // Adicionado router
   const { user, loginAs, logout } = useAuth();
 
   const currentPage = mainNav.find(item => {
@@ -40,9 +41,9 @@ function AppShellInner({ children }: AppShellLayoutProps) {
   const handleUserNavClick = (href: string) => {
     if (href === '#') { // Handle logout
       logout();
-      // Potentially redirect to login page here
-      // router.push('/login');
+      router.push('/login'); // Redirecionamento explícito para /login
     }
+    // Se não for logout, a navegação normal via Link (asChild) cuidará disso.
   };
   
   return (
@@ -88,12 +89,14 @@ function AppShellInner({ children }: AppShellLayoutProps) {
                   return (
                     <DropdownMenuItem key={item.label} asChild={item.href !== '#'} onClick={() => handleUserNavClick(item.href)}>
                       {item.href === '#' ? (
-                        <button className="w-full text-left">
+                        // Usar um elemento button real para logout para que o onClick seja acionado corretamente
+                        // O Link não é necessário aqui e pode interferir com o onClick.
+                        <button className="w-full text-left flex items-center relative">
                           <IconComponent className="mr-2 h-4 w-4" />
                           <span>{item.label}</span>
                         </button>
                       ) : (
-                        <Link href={item.href}>
+                        <Link href={item.href} className="flex items-center">
                           <IconComponent className="mr-2 h-4 w-4" />
                           <span>{item.label}</span>
                         </Link>
