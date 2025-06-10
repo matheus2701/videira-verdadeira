@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal } from "lucide-react"; // Adicionado SlidersHorizontal
+import { ShieldAlert, UserCircle, Lock, ListChecks, UserCog, SlidersHorizontal } from "lucide-react";
+import { Switch } from "@/components/ui/switch"; // Importar Switch
 
 // Mock para descrever as permissões dos papéis
 const rolePermissionsData = {
@@ -25,7 +26,7 @@ const rolePermissionsData = {
       { feature: "Coordenação de Casas de Paz", description: "Agendar e visualizar todas as casas de paz." },
       { feature: "Acompanhamento de Lições", description: "Visualizar e gerenciar o progresso das lições em todas as casas de paz." },
       { feature: "Relatórios Gerais", description: "Acessar todos os relatórios consolidados da igreja (status de células, crescimento, financeiro)." },
-      { feature: "Configurações do Sistema", description: "Acesso às configurações de perfil e gerenciamento de permissões (visualização)." },
+      { feature: "Configurações do Sistema", description: "Acesso às configurações de perfil e gerenciamento de permissões." },
       { feature: "Gerenciamento de Usuários (Futuro)", description: "Capacidade de gerenciar contas de usuário diretamente." },
     ],
   },
@@ -39,6 +40,7 @@ const rolePermissionsData = {
       { feature: "Registro de Ofertas da Célula", description: "Registrar ofertas específicas da sua célula." },
       { feature: "Acompanhamento de Lições (Casas de Paz da Célula)", description: "Registrar o progresso das lições nas casas de paz sob sua responsabilidade." },
       { feature: "Configurações de Perfil", description: "Visualizar informações do seu perfil." },
+      // O acesso a Relatórios será controlado dinamicamente pela nova permissão
     ],
   },
 };
@@ -46,7 +48,7 @@ const rolePermissionsData = {
 type RoleKey = keyof typeof rolePermissionsData;
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, appPermissions, toggleLiderPodeVerRelatorios } = useAuth(); // Obter appPermissions e a função de toggle
 
   if (!user) {
     return (
@@ -114,7 +116,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="font-headline text-xl">Visão Geral das Permissões por Papel</CardTitle>
               <CardDescription className="font-body">
-                Entenda as capacidades e o nível de acesso de cada papel no sistema. Atualmente, as permissões são fixas.
+                Entenda as capacidades e o nível de acesso de cada papel no sistema.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -149,25 +151,36 @@ export default function SettingsPage() {
                   <CardHeader>
                     <CardTitle className="font-headline text-lg flex items-center gap-2">
                       <SlidersHorizontal className="h-5 w-5 text-primary" />
-                      Gerenciamento Avançado de Permissões
+                      Gerenciamento Avançado de Permissões (Simulado)
                     </CardTitle>
                     <CardDescription className="font-body">
-                        Ajuste fino de permissões e criação de papéis customizados.
+                        Controle permissões específicas para papéis.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground font-body mb-4">
-                        Esta seção permitirá, no futuro, que administradores (Missionários) tenham controle granular sobre as permissões de usuários individuais ou criem novos papéis com conjuntos de acesso específicos.
-                        Isso oferece flexibilidade máxima para adaptar o sistema às necessidades da igreja.
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground font-body">
+                        Esta seção permite ajustar dinamicamente algumas permissões.
+                        Por enquanto, você pode controlar o acesso dos Líderes de Célula à página de Relatórios.
                     </p>
-                    <div className="p-6 border border-dashed rounded-lg bg-background/50 text-center">
-                        <p className="text-muted-foreground font-body mb-3">
-                            Funcionalidade de edição avançada de permissões está em desenvolvimento.
-                        </p>
-                        <Button variant="outline" disabled>
-                            Configurar Permissões Detalhadas (Em breve)
-                        </Button>
+                    <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                      <Switch
+                        id="lider-pode-ver-relatorios"
+                        checked={appPermissions.liderPodeVerRelatorios}
+                        onCheckedChange={toggleLiderPodeVerRelatorios}
+                        aria-labelledby="lider-pode-ver-relatorios-label"
+                      />
+                      <Label htmlFor="lider-pode-ver-relatorios" id="lider-pode-ver-relatorios-label" className="font-body cursor-pointer">
+                        Permitir que Líderes de Célula acessem a página de Relatórios
+                      </Label>
                     </div>
+                     <div className="mt-4 p-4 border border-dashed rounded-lg text-sm text-muted-foreground font-body bg-background/50">
+                        <strong>Observação:</strong> Esta é uma simulação de gerenciamento de permissões.
+                        Em um sistema real, haveria mais opções e um controle mais granular.
+                        Funcionalidades como "Configurar Permissões Detalhadas" para criar papéis customizados e ajustar permissões individuais estão em desenvolvimento.
+                    </div>
+                    <Button variant="outline" disabled className="mt-4">
+                        Configurar Permissões Detalhadas (Em breve)
+                    </Button>
                   </CardContent>
                 </Card>
               )}
@@ -176,7 +189,6 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Placeholder for other settings sections if needed */}
       {user.role === 'missionario' && (
         <Card className="mt-6">
           <CardHeader>
@@ -211,3 +223,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

@@ -3,7 +3,12 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useState, useMemo, useCallback } from 'react';
-import type { User, Role, Vida, CellGroup, StoredOffering, OfferingFormValues, VidaStatus } from '@/types'; // Adicionado StoredOffering, OfferingFormValues
+import type { User, Role, Vida, CellGroup, StoredOffering, OfferingFormValues, VidaStatus } from '@/types';
+
+// Nova interface para permissões globais da aplicação (mock)
+interface AppPermissions {
+  liderPodeVerRelatorios: boolean;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -21,7 +26,9 @@ interface AuthContextType {
   addMockUser: (newUser: User) => void;
   updateMockUser: (updatedUser: User) => void;
   addMockOffering: (newOffering: OfferingFormValues) => void;
-  toggleUserActiveStatus: (userId: string) => void; // Adicionado aqui
+  toggleUserActiveStatus: (userId: string) => void;
+  appPermissions: AppPermissions; // Adicionado
+  toggleLiderPodeVerRelatorios: () => void; // Adicionado
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -126,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [cellGroupsData, setCellGroupsData] = useState<CellGroup[]>(initialMockCellGroups);
   const [usersData, setUsersData] = useState<User[]>(initialMockUsers);
   const [offeringsData, setOfferingsData] = useState<StoredOffering[]>(initialMockOfferings);
+  const [appPermissions, setAppPermissions] = useState<AppPermissions>({ liderPodeVerRelatorios: false }); // Estado para permissões
 
   const loginAs = useCallback((role: Role) => {
     if (role === 'missionario') {
@@ -192,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const addMockVida = useCallback((newVida: Vida) => {
-    setVidasData(prev => [newVida, ...prev]);
+    setVidasData(prev => [{...newVida, createdAt: newVida.createdAt || new Date()}, ...prev]);
   }, []);
 
   const updateMockCellGroup = useCallback((updatedCG: CellGroup, oldLiderVidaId?: string) => {
@@ -225,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             cellGroupId: updatedCG.id,
             cellGroupName: updatedCG.name,
             name: updatedCG.liderNome || u.name,
+            isActive: u.isActive === undefined ? true : u.isActive, // Preserva ou define como ativo
           };
           if (user && user.id === u.id) {
             setUser(updatedAuthUser);
@@ -237,13 +246,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (oldLiderVidaId && oldLiderVidaId !== updatedCG.liderVidaId) {
         setVidasData(prevVidas => prevVidas.map(v => {
-            if (v.id === oldLiderVidaId && v.idCelula === updatedCG.id) {
-                return { ...v, idCelula: '', nomeCelula: '', geracaoCelula: '' };
+            if (v.id === oldLiderVidaId && v.idCelula === updatedCG.id) { // Garante que está removendo da célula correta
+                return { ...v, idCelula: '', nomeCelula: '', geracaoCelula: '' }; // Remove da célula
             }
             return v;
         }));
         setUsersData(prevUsers => prevUsers.map(u => {
-            if (u.vidaId === oldLiderVidaId && u.cellGroupId === updatedCG.id) {
+            if (u.vidaId === oldLiderVidaId && u.cellGroupId === updatedCG.id) { // Garante que está atualizando o usuário correto
                  const updatedAuthUser = { ...u, cellGroupId: undefined, cellGroupName: undefined };
                  if (user && user.id === u.id) {
                     setUser(updatedAuthUser);
@@ -257,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const addMockCellGroup = useCallback((newCG: CellGroup) => {
-    setCellGroupsData(prev => [newCG, ...prev]);
+    setCellGroupsData(prev => [{...newCG, lastStatusUpdate: newCG.lastStatusUpdate || new Date()}, ...prev]);
   }, []);
 
   const addMockUser = useCallback((newUser: User) => {
@@ -312,6 +321,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, [user]);
 
+  const toggleLiderPodeVerRelatorios = useCallback(() => {
+    setAppPermissions(prev => ({ ...prev, liderPodeVerRelatorios: !prev.liderPodeVerRelatorios }));
+  }, []);
+
+
   const value = useMemo(() => ({
     user,
     setUser,
@@ -328,8 +342,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     addMockUser,
     updateMockUser,
     addMockOffering,
-    toggleUserActiveStatus, // Adicionado aqui
-  }), [user, loginAs, logout, usersData, vidasData, cellGroupsData, offeringsData, updateMockVida, addMockVida, updateMockCellGroup, addMockCellGroup, addMockUser, updateMockUser, addMockOffering, toggleUserActiveStatus]); // Adicionado à lista de dependências
+    toggleUserActiveStatus,
+    appPermissions, // Expor permissões
+    toggleLiderPodeVerRelatorios, // Expor função de toggle
+  }), [user, loginAs, logout, usersData, vidasData, cellGroupsData, offeringsData, updateMockVida, addMockVida, updateMockCellGroup, addMockCellGroup, addMockUser, updateMockUser, addMockOffering, toggleUserActiveStatus, appPermissions, toggleLiderPodeVerRelatorios]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+    
