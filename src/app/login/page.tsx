@@ -57,7 +57,7 @@ export default function LoginPage() {
 
   // If user becomes available while on this page (e.g. due to fast context update),
   // useEffect will handle redirect. Render nothing or a loader until then.
-  if (auth.user) {
+   if (auth.user && !form.formState.isSubmitting) {
     return null; 
   }
 
