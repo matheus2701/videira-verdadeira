@@ -41,7 +41,7 @@ function AppShellInner({ children }: AppShellLayoutProps) {
   const handleUserNavClick = (href: string) => {
     if (href === '#') { // Handle logout
       logout();
-      router.push('/'); // Redireciona para a página inicial (landing page)
+      router.push('/login'); // Redireciona para a página de login
     }
     // Se não for logout, a navegação normal via Link (asChild) cuidará disso.
   };
@@ -87,14 +87,14 @@ function AppShellInner({ children }: AppShellLayoutProps) {
                     return null;
                   }
                   return (
-                    <DropdownMenuItem key={item.label} asChild={false} onClick={() => handleUserNavClick(item.href)} className="cursor-pointer">
+                    <DropdownMenuItem key={item.label} onClick={() => handleUserNavClick(item.href)} className="cursor-pointer p-0">
                       {item.href === '#' ? (
-                        <div className="w-full text-left flex items-center relative">
-                          <IconComponent className="mr-2 h-4 w-4" />
-                          <span>{item.label}</span>
-                        </div>
+                         <button type="button" className="w-full text-left flex items-center relative px-2 py-1.5">
+                           <IconComponent className="mr-2 h-4 w-4" />
+                           <span>{item.label}</span>
+                         </button>
                       ) : (
-                        <Link href={item.href} className="flex items-center w-full">
+                        <Link href={item.href} className="flex items-center w-full px-2 py-1.5">
                           <IconComponent className="mr-2 h-4 w-4" />
                           <span>{item.label}</span>
                         </Link>
