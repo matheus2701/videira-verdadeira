@@ -10,42 +10,67 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { UserCircle, Network, ShieldAlert, Edit, Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 
 const editDescriptionSchema = z.object({
   description: z.string().min(10, { message: "A descrição deve ter pelo menos 10 caracteres." }),
 });
-
 type EditDescriptionFormValues = z.infer<typeof editDescriptionSchema>;
 
-export default function GeracaoVideiraPage() {
-  const { mockUsers, user: currentUser, geracaoVideiraConfig, setGeracaoVideiraDescription } = useAuth();
-  const { toast } = useToast();
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+const editProfileSchema = z.object({
+  name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres." }),
+  email: z.string().email({ message: "Formato de e-mail inválido." }),
+});
+type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
-  const form = useForm<EditDescriptionFormValues>({
+export default function GeracaoVideiraPage() {
+  const { mockUsers, user: currentUser, geracaoVideiraConfig, setGeracaoVideiraDescription, updateMockUser } = useAuth();
+  const { toast } = useToast();
+  const [isDescEditDialogOpen, setIsDescEditDialogOpen] = useState(false);
+  const [isProfileEditDialogOpen, setIsProfileEditDialogOpen] = useState(false);
+
+  const descriptionForm = useForm<EditDescriptionFormValues>({
     resolver: zodResolver(editDescriptionSchema),
     defaultValues: {
       description: geracaoVideiraConfig.description,
     },
   });
 
-  useEffect(() => {
-    form.reset({ description: geracaoVideiraConfig.description });
-  }, [geracaoVideiraConfig.description, form, isEditDialogOpen]);
+  const profileForm = useForm<EditProfileFormValues>({
+    resolver: zodResolver(editProfileSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+    },
+  });
 
-
+  // Lógica para determinar 'responsavel'
   let responsavel = mockUsers.find(u => u.email === 'matheus.santos01@gmail.com' && u.role === 'missionario');
-  
   if (!responsavel && currentUser?.role === 'missionario') {
     responsavel = currentUser;
-  } else if (!responsavel) {
+  } else if (!responsavel && mockUsers.length > 0) {
     responsavel = mockUsers.find(u => u.role === 'missionario');
   }
+  
+  useEffect(() => {
+    descriptionForm.reset({ description: geracaoVideiraConfig.description });
+  }, [geracaoVideiraConfig.description, descriptionForm, isDescEditDialogOpen]);
+
+  useEffect(() => {
+    if (isProfileEditDialogOpen && responsavel) {
+      profileForm.reset({
+        name: responsavel.name,
+        email: responsavel.email,
+      });
+    } else if (!isProfileEditDialogOpen) {
+        profileForm.reset({ name: "", email: "" }); // Limpa o formulário se o diálogo for fechado
+    }
+  }, [isProfileEditDialogOpen, responsavel, profileForm]);
 
 
   if (!responsavel) {
@@ -65,7 +90,7 @@ export default function GeracaoVideiraPage() {
           <CardContent>
             <p className="font-body text-muted-foreground">
               Não foi possível determinar o missionário responsável pela Geração Videira Verdadeira no momento.
-              Por favor, verifique as configurações de usuários no sistema.
+              Verifique se há usuários com o papel 'missionario' cadastrados no sistema.
             </p>
           </CardContent>
         </Card>
@@ -73,16 +98,39 @@ export default function GeracaoVideiraPage() {
     );
   }
   
-  const nomeResponsavel = responsavel.name;
   const cargoResponsavel = "Missionário";
 
-  function onSubmitEdit(values: EditDescriptionFormValues) {
+  function onSubmitEditDescription(values: EditDescriptionFormValues) {
     setGeracaoVideiraDescription(values.description);
     toast({
       title: "Sucesso!",
       description: "Descrição da Geração Videira Verdadeira atualizada.",
     });
-    setIsEditDialogOpen(false);
+    setIsDescEditDialogOpen(false);
+  }
+
+  function onSubmitEditProfile(values: EditProfileFormValues) {
+    if (!responsavel) {
+        toast({ title: "Erro", description: "Missionário responsável não encontrado para edição.", variant: "destructive" });
+        return;
+    }
+    // Permite que o currentUser (se missionário) edite o 'responsavel' exibido.
+    if (currentUser?.role !== 'missionario') {
+        toast({ title: "Acesso Negado", description: "Apenas missionários podem editar perfis de responsáveis.", variant: "destructive" });
+        return;
+    }
+
+    const updatedUserData = {
+      ...responsavel,
+      name: values.name,
+      email: values.email,
+    };
+    updateMockUser(updatedUserData); // AuthContext lida com a atualização do user e do currentUser se necessário
+    toast({
+      title: "Perfil Atualizado!",
+      description: `O perfil de ${responsavel.name} foi atualizado.`,
+    });
+    setIsProfileEditDialogOpen(false);
   }
 
   return (
@@ -93,7 +141,7 @@ export default function GeracaoVideiraPage() {
           <h1 className="font-headline text-3xl font-semibold">Geração Videira Verdadeira</h1>
         </div>
         {currentUser?.role === 'missionario' && (
-          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <Dialog open={isDescEditDialogOpen} onOpenChange={setIsDescEditDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 <Edit className="mr-2 h-4 w-4" /> Editar Descrição
@@ -106,14 +154,14 @@ export default function GeracaoVideiraPage() {
                   Atualize o texto descritivo sobre a Geração Videira Verdadeira.
                 </DialogDescription>
               </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmitEdit)} className="space-y-4 py-4">
+              <Form {...descriptionForm}>
+                <form onSubmit={descriptionForm.handleSubmit(onSubmitEditDescription)} className="space-y-4 py-4">
                   <FormField
-                    control={form.control}
+                    control={descriptionForm.control}
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Descrição</FormLabel>
+                        <RHFFormLabel>Descrição</RHFFormLabel>
                         <FormControl>
                           <Textarea placeholder="Descreva a visão e missão da Geração Videira..." {...field} rows={6} />
                         </FormControl>
@@ -135,13 +183,13 @@ export default function GeracaoVideiraPage() {
       <Card className="shadow-lg max-w-md">
         <CardHeader className="items-center text-center">
           <Avatar className="h-24 w-24 mb-4">
-            <AvatarImage src="https://placehold.co/100x100.png" alt={`Foto de ${nomeResponsavel}`} data-ai-hint="person portrait" />
+            <AvatarImage src="https://placehold.co/100x100.png" alt={`Foto de ${responsavel.name}`} data-ai-hint="person portrait" />
             <AvatarFallback>
-              {nomeResponsavel ? nomeResponsavel.substring(0, 2).toUpperCase() : 'VV'}
+              {responsavel.name ? responsavel.name.substring(0, 2).toUpperCase() : 'VV'}
             </AvatarFallback>
           </Avatar>
           <CardTitle className="font-headline text-2xl">
-            {nomeResponsavel || <Skeleton className="h-8 w-48" />}
+            {responsavel.name || <Skeleton className="h-8 w-48" />}
           </CardTitle>
           <CardDescription className="font-body text-md">
             {cargoResponsavel} Responsável
@@ -152,7 +200,7 @@ export default function GeracaoVideiraPage() {
             <h3 className="font-headline text-lg mb-2">Detalhes do Responsável</h3>
             <div className="space-y-2 font-body text-sm">
               <p>
-                <strong className="font-medium">Nome:</strong> {nomeResponsavel || <Skeleton className="h-5 w-40 inline-block" />}
+                <strong className="font-medium">Nome:</strong> {responsavel.name || <Skeleton className="h-5 w-40 inline-block" />}
               </p>
               <p>
                 <strong className="font-medium">Cargo:</strong> {cargoResponsavel}
@@ -169,7 +217,62 @@ export default function GeracaoVideiraPage() {
              </p>
           </div>
         </CardContent>
+        {currentUser?.role === 'missionario' && responsavel && (
+        <CardFooter className="flex-col items-start pt-4 border-t">
+            <Dialog open={isProfileEditDialogOpen} onOpenChange={setIsProfileEditDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <UserCircle className="mr-2 h-4 w-4" /> Editar Perfil do Responsável
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-headline">Editar Perfil do Missionário Responsável</DialogTitle>
+                <DialogDescription className="font-body">
+                  Atualize o nome e e-mail de <span className="font-semibold">{responsavel.name}</span>.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...profileForm}>
+                <form onSubmit={profileForm.handleSubmit(onSubmitEditProfile)} className="space-y-4 py-4">
+                  <FormField
+                    control={profileForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <RHFFormLabel>Nome</RHFFormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome completo" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={profileForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <RHFFormLabel>E-mail</RHFFormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="email@exemplo.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter className="pt-4">
+                    <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
+                    <Button type="submit"><Save className="mr-2 h-4 w-4" /> Salvar Alterações</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </CardFooter>
+        )}
       </Card>
     </div>
   );
 }
+
+    
