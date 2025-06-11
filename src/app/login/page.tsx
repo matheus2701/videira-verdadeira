@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react'; // Adicionado useState
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -17,7 +17,7 @@ import { Icons } from '@/components/icons';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'E-mail inválido.' }),
-  password: z.string().min(1, { message: 'Senha é obrigatória.' }),
+  password: z.string().min(6, { message: 'Senha deve ter pelo menos 6 caracteres.' }), // Supabase geralmente exige 6+
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -26,6 +26,7 @@ export default function LoginPage() {
   const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false); // Estado local para submissão
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -36,28 +37,34 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // Redirect to dashboard if user is already logged in
+    // Redireciona para o dashboard se o usuário já estiver logado
+    // Isso será acionado pelo onAuthStateChange no AuthContext populando auth.user
     if (auth.user) {
       router.push('/dashboard');
     }
   }, [auth.user, router]);
 
   async function onSubmit(values: LoginFormValues) {
+    setIsSubmitting(true);
     const success = await auth.loginWithEmail(values.email, values.password);
     if (success) {
-      router.push('/dashboard');
+      // O useEffect acima cuidará do redirecionamento quando auth.user for atualizado
+      // Não é necessário redirecionar explicitamente aqui se onAuthStateChange for rápido.
+      // Mas, para garantir, podemos manter ou adicionar um pequeno delay para o contexto atualizar.
+      // router.push('/dashboard'); // Pode ser redundante se onAuthStateChange for rápido
     } else {
       toast({
         title: 'Erro de Login',
-        description: 'E-mail ou senha inválidos, ou usuário inativo.',
+        description: 'E-mail ou senha inválidos. Verifique suas credenciais ou contate o suporte.',
         variant: 'destructive',
       });
     }
+    setIsSubmitting(false);
   }
 
-  // If user becomes available while on this page (e.g. due to fast context update),
-  // useEffect will handle redirect. Render nothing or a loader until then.
-   if (auth.user && !form.formState.isSubmitting) {
+  // Se o usuário se tornar disponível enquanto nesta página (devido à atualização rápida do contexto),
+  // o useEffect cuidará do redirecionamento. Renderiza nada ou um loader até lá.
+   if (auth.user && !isSubmitting) {
     return null; 
   }
 
@@ -114,8 +121,8 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Entrando...' : 'Entrar'}
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
           </Form>

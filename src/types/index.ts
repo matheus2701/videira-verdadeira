@@ -5,14 +5,14 @@ export type Role = 'missionario' | 'lider_de_celula';
 
 // Representa um usuário autenticado do sistema, seu papel e potencial vínculo com um perfil de Vida.
 export interface User {
-  id: string; // ID do sistema de autenticação
-  name: string; // Nome para exibição no perfil (pode ser da Vida associada)
-  email: string;
-  role: Role;
-  vidaId?: string; // ID da Vida associada, se o usuário for um líder de célula
-  cellGroupId?: string; // ID da célula que o líder (User) lidera
-  cellGroupName?: string; // Nome da célula para exibição rápida
-  isActive?: boolean; // Adicionado para gerenciar status de acesso
+  id: string; // ID do sistema de autenticação (Supabase auth.users.id)
+  name?: string; // Nome para exibição no perfil (virá da tabela 'profiles' do Supabase)
+  email: string; // Supabase auth.users.email
+  role?: Role; // Virá da tabela 'profiles' do Supabase
+  vidaId?: string; // ID da Vida associada, se o usuário for um líder de célula (da tabela 'profiles')
+  cellGroupId?: string; // ID da célula que o líder (User) lidera (da tabela 'profiles')
+  cellGroupName?: string; // Nome da célula para exibição rápida (da tabela 'profiles')
+  isActive?: boolean; // Virá da tabela 'profiles' do Supabase
 }
 
 export type VidaStatus = 'membro' | 'lider_em_treinamento' | 'lider_ativo';

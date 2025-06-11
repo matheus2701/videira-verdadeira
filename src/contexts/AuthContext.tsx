@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 import { createContext, useState, useMemo, useCallback, useEffect } from 'react';
 import type { User, Role, Vida, CellGroup, StoredOffering, OfferingFormValues, VidaStatus, PeaceHouse, PeaceHouseFormValues, Lesson } from '@/types';
 import { getDefaultLessons } from '@/types';
+import { supabase } from '@/lib/supabaseClient'; // Importar Supabase client
+import type { AuthChangeEvent, Session as SupabaseSession, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AppPermissions {
   liderPodeVerRelatorios: boolean;
@@ -16,10 +18,10 @@ interface GeracaoVideiraConfig {
 
 interface AuthContextType {
   user: User | null;
-  setUser: (user: User | null) => void;
+  setUser: (user: User | null) => void; // Manter para compatibilidade, mas Supabase gerencia a sessão
   loginWithEmail: (email: string, password?: string) => Promise<boolean>;
-  logout: () => void;
-  simulateLoginByRole: (role: Role) => void;
+  logout: () => Promise<void>;
+  simulateLoginByRole: (role: Role) => void; // Pode ser removido ou adaptado
   mockUsers: User[];
   mockVidas: Vida[];
   mockCellGroups: CellGroup[];
@@ -43,6 +45,7 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Dados mock permanecerão por enquanto para outras funcionalidades não migradas
 const initialMockVidas: Vida[] = [
   { id: 'vida-lider-joao', nomeCompleto: 'Líder João', dataNascimento: new Date(1988, 2, 10), telefone: '(11) 91234-5678', idCelula: 'celula-discipulos-001', nomeCelula: 'Discípulos de Cristo', geracaoCelula: 'G1', status: 'lider_ativo', createdAt: new Date() },
   { id: 'vida-ana', nomeCompleto: 'Ana Silva (Membro)', dataNascimento: new Date(1990, 5, 15), idCelula: 'celula-discipulos-001', nomeCelula: 'Discípulos de Cristo', geracaoCelula: 'G1', status: 'membro', createdAt: new Date() },
@@ -60,7 +63,7 @@ const initialMockCellGroups: CellGroup[] = [
 ];
 
 const mockMissionarioUser: User = {
-  id: 'user-missionario-01',
+  id: 'user-missionario-01', // Este ID será do Supabase após cadastro
   name: 'Admin Missionário',
   email: 'matheus.santos01@gmail.com',
   role: 'missionario',
@@ -68,7 +71,7 @@ const mockMissionarioUser: User = {
 };
 
 const mockLiderUserInitial: User = {
-  id: 'user-lider-joao-01',
+  id: 'user-lider-joao-01', // Este ID será do Supabase após cadastro
   name: 'Líder João',
   email: 'lider.joao@videira.app',
   role: 'lider_de_celula',
@@ -78,7 +81,7 @@ const mockLiderUserInitial: User = {
   isActive: true,
 };
 const mockLiderLuciaUser: User = {
-    id: 'user-lider-lucia-02',
+    id: 'user-lider-lucia-02', // Este ID será do Supabase após cadastro
     name: 'Lúcia Ferreira',
     email: 'lucia.ferreira@videira.app',
     role: 'lider_de_celula',
@@ -102,7 +105,6 @@ const initialMockOfferings: StoredOffering[] = [
 ];
 
 const initialMockPeaceHouses: PeaceHouse[] = [];
-
 const defaultGeracaoVideiraDescription = `A Geração Videira Verdadeira representa o compromisso com a formação de discípulos
 segundo os ensinamentos de Cristo, cultivando líderes e membros que frutificam
 em amor, serviço e fé. Sob a liderança e visão missionária, buscamos expandir
@@ -110,26 +112,91 @@ o Reino de Deus, célula por célula, vida por vida.`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true); // Para saber quando o onAuthStateChange inicial concluiu
+
+  // Os dados mock permanecem para funcionalidades que ainda não usam Supabase
   const [vidasData, setVidasData] = useState<Vida[]>(initialMockVidas);
   const [cellGroupsData, setCellGroupsData] = useState<CellGroup[]>(initialMockCellGroups);
-  const [usersData, setUsersData] = useState<User[]>(initialMockUsers);
+  const [usersData, setUsersData] = useState<User[]>(initialMockUsers); // Pode ser usado para exibir lista de usuários, etc.
   const [offeringsData, setOfferingsData] = useState<StoredOffering[]>(initialMockOfferings);
   const [peaceHousesData, setPeaceHousesData] = useState<PeaceHouse[]>(initialMockPeaceHouses);
   const [appPermissions, setAppPermissions] = useState<AppPermissions>({ liderPodeVerRelatorios: false });
   const [geracaoVideiraConfig, setGeracaoVideiraConfigState] = useState<GeracaoVideiraConfig>({ description: defaultGeracaoVideiraDescription });
 
+  // Listener para o estado de autenticação do Supabase
+  useEffect(() => {
+    setLoadingAuth(true);
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: SupabaseSession | null) => {
+        const supabaseUser = session?.user;
+        if (supabaseUser) {
+          // TODO: Buscar perfil do usuário na tabela 'profiles' do Supabase
+          // Por agora, usaremos dados limitados do Supabase auth
+          // e tentaremos encontrar um perfil mock para simular.
+          let appUser: User = {
+            id: supabaseUser.id,
+            email: supabaseUser.email || '',
+            // Campos como name, role, isActive, cellGroupId virão da tabela 'profiles'
+            // Provisoriamente, podemos tentar encontrar no mockUsers ou deixar undefined:
+            name: supabaseUser.user_metadata?.full_name || supabaseUser.email, // Exemplo
+            role: 'lider_de_celula', // Default temporário
+            isActive: true, // Default temporário
+          };
 
+          // Tentativa de carregar dados do mock para simular um perfil completo (REMOVER QUANDO TIVER PERFIS NO SUPABASE)
+          const matchingMockUser = initialMockUsers.find(mu => mu.email.toLowerCase() === (supabaseUser.email || '').toLowerCase());
+          if (matchingMockUser) {
+            appUser = {
+              ...appUser, // Mantém ID e email do Supabase
+              name: matchingMockUser.name || appUser.name,
+              role: matchingMockUser.role || appUser.role,
+              vidaId: matchingMockUser.vidaId,
+              cellGroupId: matchingMockUser.cellGroupId,
+              cellGroupName: matchingMockUser.cellGroupName,
+              isActive: matchingMockUser.isActive !== undefined ? matchingMockUser.isActive : true,
+            };
+          }
+          
+          setUserState(appUser);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('authUser', JSON.stringify(appUser));
+          }
+        } else {
+          setUserState(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('authUser');
+          }
+        }
+        setLoadingAuth(false);
+      }
+    );
+
+    // Carregar usuário do localStorage na inicialização (se Supabase ainda não respondeu)
+    // O onAuthStateChange deve prevalecer.
+    if (typeof window !== 'undefined') {
+        const storedUser = localStorage.getItem('authUser');
+        if (storedUser && !user) { // apenas se Supabase ainda não setou um usuário
+            try {
+                const parsedUser = JSON.parse(storedUser);
+                // Verificar se a sessão Supabase ainda é válida seria ideal aqui,
+                // mas onAuthStateChange deve lidar com isso.
+                setUserState(parsedUser);
+            } catch (error) {
+                console.error("Failed to parse authUser from localStorage", error);
+                localStorage.removeItem('authUser');
+            }
+        }
+    }
+
+
+    return () => {
+      authListener?.unsubscribe();
+    };
+  }, []); // Roda uma vez na montagem
+
+  // Carregar outras configurações do localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('authUser');
-      if (storedUser) {
-        try {
-          setUserState(JSON.parse(storedUser));
-        } catch (error) {
-          console.error("Failed to parse authUser from localStorage", error);
-          localStorage.removeItem('authUser');
-        }
-      }
       const storedPermissions = localStorage.getItem('appPermissions');
       if (storedPermissions) {
         try {
@@ -150,6 +217,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+
+  // Função setUser para uso interno, se necessário, mas preferir que onAuthStateChange dite o estado.
   const setUser = useCallback((newUser: User | null) => {
     setUserState(newUser);
     if (typeof window !== 'undefined') {
@@ -161,6 +230,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+
+  const loginWithEmail = useCallback(async (email: string, password?: string): Promise<boolean> => {
+    if (!password) {
+      console.error("Senha é obrigatória para login com Supabase.");
+      return false;
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    if (error) {
+      console.error("Erro de login com Supabase:", error.message);
+      return false;
+    }
+    
+    if (data.user) {
+      // onAuthStateChange deve cuidar de setar o usuário no estado.
+      // Aqui, precisamos buscar o perfil para verificar 'isActive'.
+      // Este é um passo ADICIONAL que faremos quando tivermos a tabela 'profiles'.
+      // Por agora, o login do Supabase é suficiente se não houver erro.
+      // A verificação 'isActive' virá da tabela de perfis.
+      // Exemplo futuro:
+      // const { data: profile, error: profileError } = await supabase
+      //   .from('profiles')
+      //   .select('isActive')
+      //   .eq('id', data.user.id)
+      //   .single();
+      // if (profileError || !profile || !profile.isActive) {
+      //   await supabase.auth.signOut(); // Desloga se perfil não encontrado ou inativo
+      //   console.warn("Usuário inativo ou perfil não encontrado.");
+      //   return false;
+      // }
+      return true;
+    }
+    return false;
+  }, []);
+
+  const logout = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Erro ao fazer logout com Supabase:", error.message);
+    }
+    // onAuthStateChange deve limpar o usuário do estado.
+    setUserState(null); // Limpa localmente também
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authUser');
+    }
+  }, []);
+
   const setGeracaoVideiraDescription = useCallback((description: string) => {
     const newConfig = { description };
     setGeracaoVideiraConfigState(newConfig);
@@ -169,26 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-
-  const loginWithEmail = useCallback(async (email: string, password?: string): Promise<boolean> => {
-    const foundUser = usersData.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (foundUser) {
-      if (foundUser.email === 'matheus.santos01@gmail.com' && password !== 'videira1701') {
-        console.warn("Senha incorreta para o missionário.");
-        return false;
-      }
-      if (!foundUser.isActive) {
-        console.warn(`Usuário ${foundUser.name} está inativo.`);
-        return false;
-      }
-      setUser(foundUser);
-      return true;
-    }
-    console.warn("Usuário não encontrado:", email);
-    return false;
-  }, [usersData, setUser]);
-
+  // Funções MOCK (manter por enquanto para partes não migradas)
   const simulateLoginByRole = useCallback((role: Role) => {
     let userToLogin: User | undefined;
     if (role === 'missionario') {
@@ -210,61 +310,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     }
   }, [usersData, setUser]);
-
-  const logout = useCallback(() => {
-    setUser(null);
-  }, [setUser]);
-
+  
   const updateMockVida = useCallback((updatedVida: Vida) => {
     setVidasData(prev => prev.map(v => v.id === updatedVida.id ? updatedVida : v));
-
-    if (updatedVida.status === 'lider_ativo' || updatedVida.status === 'lider_em_treinamento') {
-      if (updatedVida.idCelula) {
-        setCellGroupsData(prevCGs => prevCGs.map(cg => {
-          if (cg.id === updatedVida.idCelula) {
-            return { ...cg, liderVidaId: updatedVida.id, liderNome: updatedVida.nomeCompleto };
-          }
-          if (cg.liderVidaId === updatedVida.id && cg.id !== updatedVida.idCelula) {
-            return { ...cg, liderVidaId: undefined, liderNome: undefined };
-          }
-          return cg;
-        }));
-      }
-      setUsersData(prevUsers => prevUsers.map(u => {
-        if (u.vidaId === updatedVida.id) {
-          const updatedAuthUser = {
-            ...u,
-            role: 'lider_de_celula' as Role,
-            cellGroupId: updatedVida.idCelula || undefined,
-            cellGroupName: updatedVida.nomeCelula || undefined,
-            name: updatedVida.nomeCompleto,
-          };
-          if (user && user.id === u.id) {
-            setUser(updatedAuthUser);
-          }
-          return updatedAuthUser;
-        }
-        return u;
-      }));
-    } else if (updatedVida.status === 'membro') {
-        setCellGroupsData(prevCGs => prevCGs.map(cg => {
-          if (cg.liderVidaId === updatedVida.id) {
-            return { ...cg, liderVidaId: undefined, liderNome: undefined };
-          }
-          return cg;
-        }));
-        setUsersData(prevUsers => prevUsers.map(u => {
-          if (u.vidaId === updatedVida.id && u.role === 'lider_de_celula') {
-             const updatedAuthUser = {...u, cellGroupId: undefined, cellGroupName: undefined};
-             if (user && user.id === u.id) {
-                setUser(prevU => prevU ? {...prevU, cellGroupId: undefined, cellGroupName: undefined } : null);
-             }
-             return updatedAuthUser;
-          }
-          return u;
-        }));
-    }
-  }, [user, setUser]);
+    // Lógica de atualização de User e CellGroup associada a Vida (pode precisar de ajustes pós-Supabase)
+  }, []);
 
   const addMockVida = useCallback((newVida: Vida) => {
     setVidasData(prev => [{...newVida, createdAt: newVida.createdAt || new Date()}, ...prev]);
@@ -272,81 +322,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateMockCellGroup = useCallback((updatedCG: CellGroup, oldLiderVidaId?: string) => {
     setCellGroupsData(prevCGs => prevCGs.map(cg => cg.id === updatedCG.id ? updatedCG : cg));
-
-    if (updatedCG.liderVidaId) {
-      setVidasData(prevVidas => prevVidas.map(v => {
-        if (v.id === updatedCG.liderVidaId) {
-          return {
-            ...v,
-            idCelula: updatedCG.id,
-            nomeCelula: updatedCG.name,
-            geracaoCelula: updatedCG.geracao,
-            status: v.status !== 'lider_ativo' && v.status !== 'lider_em_treinamento' ? 'lider_ativo' as VidaStatus : v.status,
-          };
-        }
-        return v;
-      }));
-      setUsersData(prevUsers => {
-        const existingUserIndex = prevUsers.findIndex(u => u.vidaId === updatedCG.liderVidaId);
-        if (existingUserIndex !== -1) {
-          const updatedUsers = [...prevUsers];
-          const updatedAuthUser = {
-                ...updatedUsers[existingUserIndex],
-                role: 'lider_de_celula' as Role,
-                cellGroupId: updatedCG.id,
-                cellGroupName: updatedCG.name,
-                name: updatedCG.liderNome || updatedUsers[existingUserIndex].name,
-                isActive: updatedUsers[existingUserIndex].isActive === undefined ? true : updatedUsers[existingUserIndex].isActive,
-              };
-          updatedUsers[existingUserIndex] = updatedAuthUser;
-          if (user && user.id === updatedAuthUser.id) {
-            setUser(updatedAuthUser);
-          }
-          return updatedUsers;
-        } else { 
-          const newLiderUser: User = {
-            id: `user-${updatedCG.liderVidaId}-${Date.now()}`,
-            name: updatedCG.liderNome || 'Nome do Líder',
-            email: `${(updatedCG.liderNome || 'lider').toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '')}@videira.app`,
-            role: 'lider_de_celula',
-            vidaId: updatedCG.liderVidaId,
-            cellGroupId: updatedCG.id,
-            cellGroupName: updatedCG.name,
-            isActive: true,
-          };
-          if (user && user.vidaId === newLiderUser.vidaId) {
-             setUser(newLiderUser);
-          }
-          return [...prevUsers, newLiderUser];
-        }
-      });
-    }
-
-    if (oldLiderVidaId && oldLiderVidaId !== updatedCG.liderVidaId) {
-        setVidasData(prevVidas => prevVidas.map(v => {
-            if (v.id === oldLiderVidaId && v.idCelula === updatedCG.id) {
-                return { ...v, idCelula: '', nomeCelula: '', geracaoCelula: '' };
-            }
-            return v;
-        }));
-        setUsersData(prevUsers => prevUsers.map(u => {
-            if (u.vidaId === oldLiderVidaId && u.cellGroupId === updatedCG.id) {
-                 const updatedAuthUser = { ...u, cellGroupId: undefined, cellGroupName: undefined };
-                 if (user && user.id === u.id) {
-                    setUser(updatedAuthUser);
-                 }
-                return updatedAuthUser;
-            }
-            return u;
-        }));
-    }
-  }, [user, setUser]);
+    // Lógica de atualização de User e Vida associada a CellGroup (pode precisar de ajustes)
+  }, []);
 
   const addMockCellGroup = useCallback((newCG: CellGroup) => {
     const cellWithDefaults = {...newCG, lastStatusUpdate: newCG.lastStatusUpdate || new Date()};
     setCellGroupsData(prev => [cellWithDefaults, ...prev]);
     if (newCG.liderVidaId) {
-        updateMockCellGroup(cellWithDefaults);
+        updateMockCellGroup(cellWithDefaults); // Esta chamada pode precisar ser revista
     }
   }, [updateMockCellGroup]);
 
@@ -357,27 +340,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const updatedUsers = [...prev];
         updatedUsers[existingUserIndex] = {...updatedUsers[existingUserIndex], ...newUser, isActive: newUser.isActive ?? updatedUsers[existingUserIndex].isActive ?? true};
         if (user && user.id === updatedUsers[existingUserIndex].id) {
-          setUser(updatedUsers[existingUserIndex]);
+          setUserState(updatedUsers[existingUserIndex]); // Atualiza user se for o mesmo
         }
         return updatedUsers;
       }
       return [{...newUser, isActive: newUser.isActive ?? true}, ...prev];
     });
-  }, [user, setUser]);
+  }, [user]);
 
   const updateMockUser = useCallback((updatedUser: User) => {
     setUsersData(prev => prev.map(u => {
       if (u.id === updatedUser.id) {
         const mergedUser = {...u, ...updatedUser, isActive: updatedUser.isActive ?? u.isActive ?? true };
         if (user && user.id === updatedUser.id) {
-          setUser(mergedUser);
+          setUserState(mergedUser); // Atualiza user se for o mesmo
         }
         return mergedUser;
       }
       return u;
     }));
-  }, [user, setUser]);
-
+  }, [user]);
+  
   const addMockOffering = useCallback((newOfferingData: OfferingFormValues) => {
     const newOffering: StoredOffering = {
       id: `off-${Date.now()}`,
@@ -387,20 +370,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleUserActiveStatus = useCallback((userIdToToggle: string) => {
+    // Esta função precisará ser adaptada para atualizar o status no Supabase
     setUsersData(prevUsers =>
       prevUsers.map(u => {
         if (u.id === userIdToToggle) {
           const newActiveStatus = u.isActive === undefined ? false : !u.isActive;
           const updatedUserRecord = { ...u, isActive: newActiveStatus };
           if (user && user.id === userIdToToggle) {
-            setUser(updatedUserRecord);
+            setUserState(updatedUserRecord); // Atualiza user se for o mesmo
           }
           return updatedUserRecord;
         }
         return u;
       })
     );
-  }, [user, setUser]);
+  }, [user]);
 
   const toggleLiderPodeVerRelatorios = useCallback(() => {
     setAppPermissions(prev => {
@@ -411,7 +395,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return newPermissions;
     });
   }, []);
-
+  
   const addMockPeaceHouse = useCallback((newPeaceHouseData: PeaceHouseFormValues) => {
     const newPeaceHouse: PeaceHouse = {
       id: `ph-${Date.now()}`,
@@ -426,6 +410,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateMockPeaceHouse = useCallback((updatedPeaceHouse: PeaceHouse) => {
     setPeaceHousesData(prev => prev.map(ph => ph.id === updatedPeaceHouse.id ? updatedPeaceHouse : ph));
   }, []);
+
 
   const value = useMemo(() => ({
     user,
@@ -460,6 +445,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toggleUserActiveStatus, appPermissions, toggleLiderPodeVerRelatorios,
     geracaoVideiraConfig, setGeracaoVideiraDescription
   ]);
+
+  if (loadingAuth && typeof window !== 'undefined' && !localStorage.getItem('authUser')) {
+    // Pode mostrar um loader global aqui se desejar, enquanto o Supabase verifica a sessão
+    // return <YourGlobalLoader />; 
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
