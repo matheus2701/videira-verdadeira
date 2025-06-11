@@ -1,26 +1,49 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserCircle, Network, ShieldAlert } from 'lucide-react'; // Adicionado ShieldAlert
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { UserCircle, Network, ShieldAlert, Edit, Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+
+const editDescriptionSchema = z.object({
+  description: z.string().min(10, { message: "A descrição deve ter pelo menos 10 caracteres." }),
+});
+
+type EditDescriptionFormValues = z.infer<typeof editDescriptionSchema>;
 
 export default function GeracaoVideiraPage() {
-  const { mockUsers, user: currentUser } = useAuth(); // Pegar o usuário logado também
+  const { mockUsers, user: currentUser, geracaoVideiraConfig, setGeracaoVideiraDescription } = useAuth();
+  const { toast } = useToast();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Encontra o usuário missionário que é o "Admin Missionário"
-  // Vamos assumir que o e-mail dele é único para identificação.
-  // Ou podemos simplesmente pegar o primeiro missionário da lista,
-  // ou o usuário logado se ele for o missionário.
+  const form = useForm<EditDescriptionFormValues>({
+    resolver: zodResolver(editDescriptionSchema),
+    defaultValues: {
+      description: geracaoVideiraConfig.description,
+    },
+  });
+
+  useEffect(() => {
+    form.reset({ description: geracaoVideiraConfig.description });
+  }, [geracaoVideiraConfig.description, form, isEditDialogOpen]);
+
+
   let responsavel = mockUsers.find(u => u.email === 'matheus.santos01@gmail.com' && u.role === 'missionario');
   
-  // Se não encontrar pelo email específico, e o usuário logado for missionário, assume-se que ele é o responsável.
   if (!responsavel && currentUser?.role === 'missionario') {
     responsavel = currentUser;
   } else if (!responsavel) {
-    // Fallback: pega o primeiro missionário da lista se nenhum dos acima for encontrado.
     responsavel = mockUsers.find(u => u.role === 'missionario');
   }
 
@@ -51,13 +74,62 @@ export default function GeracaoVideiraPage() {
   }
   
   const nomeResponsavel = responsavel.name;
-  const cargoResponsavel = "Missionário"; // Definido como Missionário
+  const cargoResponsavel = "Missionário";
+
+  function onSubmitEdit(values: EditDescriptionFormValues) {
+    setGeracaoVideiraDescription(values.description);
+    toast({
+      title: "Sucesso!",
+      description: "Descrição da Geração Videira Verdadeira atualizada.",
+    });
+    setIsEditDialogOpen(false);
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Network className="h-8 w-8 text-primary" />
-        <h1 className="font-headline text-3xl font-semibold">Geração Videira Verdadeira</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Network className="h-8 w-8 text-primary" />
+          <h1 className="font-headline text-3xl font-semibold">Geração Videira Verdadeira</h1>
+        </div>
+        {currentUser?.role === 'missionario' && (
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Edit className="mr-2 h-4 w-4" /> Editar Descrição
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="font-headline">Editar Descrição da Geração Videira</DialogTitle>
+                <DialogDescription className="font-body">
+                  Atualize o texto descritivo sobre a Geração Videira Verdadeira.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmitEdit)} className="space-y-4 py-4">
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Descreva a visão e missão da Geração Videira..." {...field} rows={6} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter className="pt-4">
+                    <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
+                    <Button type="submit"><Save className="mr-2 h-4 w-4" /> Salvar Descrição</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Card className="shadow-lg max-w-md">
@@ -92,11 +164,8 @@ export default function GeracaoVideiraPage() {
           </div>
           <div className="border-t pt-4">
              <h3 className="font-headline text-lg mb-2">Sobre a Geração Videira Verdadeira</h3>
-             <p className="font-body text-muted-foreground text-sm">
-                A Geração Videira Verdadeira representa o compromisso com a formação de discípulos
-                segundo os ensinamentos de Cristo, cultivando líderes e membros que frutificam
-                em amor, serviço e fé. Sob a liderança e visão missionária, buscamos expandir
-                o Reino de Deus, célula por célula, vida por vida.
+             <p className="font-body text-muted-foreground text-sm whitespace-pre-line">
+                {geracaoVideiraConfig.description || <Skeleton className="h-20 w-full" />}
              </p>
           </div>
         </CardContent>
