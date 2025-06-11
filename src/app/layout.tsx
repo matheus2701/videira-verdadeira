@@ -8,6 +8,9 @@ import { AuthProvider } from '@/contexts/AuthContext'; // Importar AuthProvider
 export const metadata: Metadata = {
   title: 'Videira Verdadeira',
   description: 'Sistema de gestão para Videira Verdadeira',
+  icons: {
+    icon: '/favicon.ico', // Next.js procurará por app/favicon.ico ou public/favicon.ico
+  },
 };
 
 export default function RootLayout({
