@@ -12,6 +12,12 @@ export const mainNav: NavItemConfig[] = [
     exact: true,
   },
   {
+    label: 'Geração Videira Verdadeira', // Novo item de menu
+    href: '/geracao-videira',
+    iconKey: 'GeracaoVideira',
+    roles: ['missionario', 'lider_de_celula'],
+  },
+  {
     label: 'Grupos de Células',
     href: '/cell-groups',
     iconKey: 'CellGroups',
@@ -24,16 +30,16 @@ export const mainNav: NavItemConfig[] = [
     roles: ['lider_de_celula'],
   },
   {
-    label: 'Vidas', // Renomeado de Membros
-    href: '/vidas', // Rota atualizada
-    iconKey: 'Vidas', // Ícone atualizado
+    label: 'Vidas',
+    href: '/vidas',
+    iconKey: 'Vidas',
     roles: ['missionario', 'lider_de_celula'],
   },
   {
-    label: 'Líderes', // Novo menu
+    label: 'Líderes',
     href: '/lideres',
     iconKey: 'Lideres',
-    roles: ['missionario'], // Inicialmente para missionários
+    roles: ['missionario'],
   },
   {
     label: 'Equipes do Encontro da Paz',
@@ -63,7 +69,7 @@ export const mainNav: NavItemConfig[] = [
     label: 'Relatórios',
     href: '/reports',
     iconKey: 'Reports',
-    roles: ['missionario'],
+    roles: ['missionario'], // A visibilidade para líderes é controlada dinamicamente no SidebarNavItems
   },
 ];
 
@@ -81,4 +87,3 @@ export const userNav: NavItemConfig[] = [
     roles: ['missionario', 'lider_de_celula'],
   },
 ];
-

@@ -12,6 +12,7 @@ import {
   LogOut,
   UsersRound, // Usado para Encounter Teams
   UserCog, // Usado para "Líderes"
+  Network, // Novo ícone para Geração Videira
   type LucideIcon,
 } from 'lucide-react';
 
@@ -20,14 +21,15 @@ export const Icons = {
   Dashboard: LayoutDashboard,
   Vidas: Users, // Renomeado de Members para Vidas
   CellGroups: LayoutGrid,
-  Lideres: UserCog, // Novo ícone para Líderes
+  Lideres: UserCog,
+  GeracaoVideira: Network, // Adicionado
+  EncounterTeams: UsersRound,
   Offerings: HandCoins,
-  PeaceHouses: Home, // Alterado de ShieldCheck para Home
+  PeaceHouses: Home,
   Lessons: ClipboardCheck,
   Reports: BarChartBig,
   Settings: Settings,
   Logout: LogOut,
-  EncounterTeams: UsersRound, // Adicionado ícone para Equipes de Encontro
 };
 
 export type IconKey = keyof typeof Icons;
